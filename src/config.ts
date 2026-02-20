@@ -312,7 +312,7 @@ let _config: FingerprintConfig = {};
  *
  * @example
  * ```typescript
- * import { configureFingerprint } from '@tinyland-inc/tinyland-fingerprint';
+ * import { configureFingerprint } from '@tummycrypt/tinyland-fingerprint';
  * configureFingerprint({
  *   logger: myLogger,
  *   hashFingerprint: myHashFn,

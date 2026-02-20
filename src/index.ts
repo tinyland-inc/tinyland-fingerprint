@@ -1,5 +1,5 @@
 /**
- * @tinyland-inc/tinyland-fingerprint
+ * @tummycrypt/tinyland-fingerprint
  *
  * Fingerprint intelligence services: enrichment, search, history,
  * settings, validation, and caching.

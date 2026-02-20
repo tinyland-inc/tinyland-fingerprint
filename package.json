@@ -1,5 +1,5 @@
 {
-  "name": "@tinyland-inc/tinyland-fingerprint",
+  "name": "@tummycrypt/tinyland-fingerprint",
   "version": "0.1.0",
   "description": "Fingerprint intelligence services: enrichment, search, history, settings, validation, and caching",
   "type": "module",
@@ -21,7 +21,10 @@
       "import": "./dist/types/index.js"
     }
   },
-  "files": ["dist", "LICENSE"],
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -31,7 +34,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tinyland-inc/tinyland-security": "workspace:*",
+    "@tummycrypt/tinyland-security": "workspace:*",
     "ua-parser-js": "^2.0.0"
   },
   "devDependencies": {
@@ -43,14 +46,23 @@
     "vitest": "^4.0.0"
   },
   "peerDependencies": {
-    "@tinyland-inc/tinyland-otel": "workspace:*"
+    "@tummycrypt/tinyland-otel": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@tinyland-inc/tinyland-otel": {
+    "@tummycrypt/tinyland-otel": {
       "optional": true
     }
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/tinyland/projects/tinyland.dev.git",
+    "directory": "packages/tinyland-fingerprint"
   }
 }
