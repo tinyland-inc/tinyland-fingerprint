@@ -31,7 +31,6 @@ ts_project(
         "//:node_modules/ua-parser-js",
         "//:node_modules/@types/node",
         "//:node_modules/@types/ua-parser-js",
-        "//:node_modules/@types/node",
         "//packages/tinyland-security:tinyland_security",
     ],
     visibility = ["//visibility:public"],
