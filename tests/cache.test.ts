@@ -61,7 +61,7 @@ describe('FingerprintCache', () => {
       const firstCheck = wasRecentlyLogged('fp-1', 'session-1');
       expect(firstCheck).toBe(true);
 
-      // Re-mark should not create a new entry
+      
       markAsLogged('fp-1', 'session-1');
       expect(getCacheStats().size).toBe(1);
     });
@@ -113,13 +113,13 @@ describe('FingerprintCache', () => {
 
   describe('TTL expiration', () => {
     it('should expire entries after TTL', () => {
-      // Manually test by manipulating time
+      
       vi.useFakeTimers();
 
       markAsLogged('fp-1', 'session-1');
       expect(wasRecentlyLogged('fp-1', 'session-1')).toBe(true);
 
-      // Advance past TTL (6 hours + 1 minute)
+      
       vi.advanceTimersByTime(6 * 60 * 60 * 1000 + 60 * 1000);
 
       expect(wasRecentlyLogged('fp-1', 'session-1')).toBe(false);

@@ -73,9 +73,9 @@ describe('FingerprintSearchService', () => {
       expect(query).toContain('span.vpn.detected = true');
       expect(query).toContain('span.geo.country = "Germany"');
       expect(query).toContain('span.risk.score >= 60');
-      // Count && separators
+      
       const andCount = (query.match(/&&/g) || []).length;
-      expect(andCount).toBe(3); // name + 3 conditions = 3 &&
+      expect(andCount).toBe(3); 
     });
   });
 
@@ -101,7 +101,7 @@ describe('FingerprintSearchService', () => {
       const service = new FingerprintSearchService();
       const result = service.parseTimeWindow('24h');
       const diff = result.end - result.start;
-      expect(diff).toBeCloseTo(24 * 60 * 60, -1); // 24 hours in seconds
+      expect(diff).toBeCloseTo(24 * 60 * 60, -1); 
     });
 
     it('should parse days', () => {
