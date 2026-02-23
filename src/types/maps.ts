@@ -1,12 +1,12 @@
-/**
- * Geographic mapping types (locally defined to avoid monorepo dependency).
- *
- * @module types/maps
- */
 
-/**
- * Map marker representing a fingerprint location.
- */
+
+
+
+
+
+
+
+
 export interface MapMarker {
   id: string;
   position: [number, number];
@@ -22,17 +22,17 @@ export interface MapMarker {
   ipHash?: string;
 }
 
-/**
- * Heatmap intensity point.
- */
+
+
+
 export interface HeatmapPoint {
   position: [number, number];
   intensity: number;
 }
 
-/**
- * Aggregated fingerprint geographic data.
- */
+
+
+
 export interface FingerprintGeoData {
   markers: MapMarker[];
   locationCounts: HeatmapPoint[];

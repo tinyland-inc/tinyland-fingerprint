@@ -1,27 +1,27 @@
-/**
- * Fingerprint History Service
- *
- * Tracks fingerprint changes per user over time for:
- * - Impossible travel detection
- * - Device change tracking
- * - Browser update detection
- * - Location history analysis
- * - VPN usage patterns
- *
- * Uses Loki as the primary data source for historical queries.
- * All external dependencies are injected via the config module.
- *
- * @module services/FingerprintHistoryService
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { getScopedLogger, getFingerprintConfig } from '../config.js';
 import type { EnrichedFingerprint } from '../types/fingerprint.js';
 
 const logger = getScopedLogger('fingerprint-history');
 
-/**
- * Historical fingerprint record.
- */
+
+
+
 export interface FingerprintHistory {
   timestamp: string;
   fingerprintId: string;
@@ -29,7 +29,7 @@ export interface FingerprintHistory {
   userId: string;
   sessionId: string;
 
-  // Location data
+  
   location: {
     country: string;
     countryCode: string;
@@ -39,20 +39,20 @@ export interface FingerprintHistory {
     timezone: string | null;
   } | null;
 
-  // Device/Browser context
+  
   deviceType: string;
   userAgent: string;
 
-  // VPN status
+  
   vpnDetected: boolean;
 
-  // Event type
+  
   eventType: string;
 }
 
-/**
- * Location change analysis.
- */
+
+
+
 export interface LocationChange {
   from: {
     country: string;
@@ -74,9 +74,9 @@ export interface LocationChange {
   reason: string;
 }
 
-/**
- * Fingerprint change detection.
- */
+
+
+
 export interface FingerprintChange {
   timestamp: string;
   changeType: 'new_device' | 'browser_update' | 'vpn_toggle' | 'fingerprint_change';
@@ -85,9 +85,9 @@ export interface FingerprintChange {
   details: string;
 }
 
-/**
- * User activity summary for security analysis.
- */
+
+
+
 export interface UserActivitySummary {
   totalEvents: number;
   uniqueDevices: number;
@@ -99,17 +99,17 @@ export interface UserActivitySummary {
   suspiciousActivityScore: number;
 }
 
-/**
- * Calculate distance between two coordinates using Haversine formula.
- * Returns distance in kilometers.
- */
+
+
+
+
 export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371; 
 
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
@@ -131,26 +131,26 @@ function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-/**
- * Check if travel between two locations is impossible.
- * Considers both distance and time elapsed.
- */
+
+
+
+
 export function isImpossibleTravel(
   distanceKm: number,
   timeElapsedMs: number
 ): { impossible: boolean; reason: string } {
   const hours = timeElapsedMs / (1000 * 60 * 60);
 
-  // If same location (< 50km), not impossible
+  
   if (distanceKm < 50) {
     return { impossible: false, reason: '' };
   }
 
-  // Calculate required speed (km/h)
+  
   const requiredSpeed = distanceKm / hours;
 
   if (hours < 1) {
-    // Short time window - stricter threshold (train/car speed)
+    
     if (requiredSpeed > 500) {
       return {
         impossible: true,
@@ -158,7 +158,7 @@ export function isImpossibleTravel(
       };
     }
   } else {
-    // Longer time window - allow for air travel
+    
     if (requiredSpeed > 900) {
       return {
         impossible: true,
@@ -170,10 +170,10 @@ export function isImpossibleTravel(
   return { impossible: false, reason: '' };
 }
 
-/**
- * Fingerprint History Service.
- * Query and analyze fingerprint history from Loki.
- */
+
+
+
+
 export class FingerprintHistoryService {
   private lokiUrl: string;
 
@@ -182,13 +182,13 @@ export class FingerprintHistoryService {
     this.lokiUrl = config.lokiUrl ?? 'http://localhost:3100';
   }
 
-  /**
-   * Get recent fingerprint history for a user.
-   */
+  
+
+
   async getRecentHistory(
     userId: string,
     limit: number = 10,
-    timeRangeHours: number = 168 // 7 days
+    timeRangeHours: number = 168 
   ): Promise<FingerprintHistory[]> {
     try {
       const end = Date.now();
@@ -239,7 +239,7 @@ export class FingerprintHistoryService {
         }
       }
 
-      // Sort by timestamp (most recent first)
+      
       history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       logger.info('Fetched fingerprint history', { userId, count: history.length.toString() });
@@ -253,15 +253,15 @@ export class FingerprintHistoryService {
     }
   }
 
-  /**
-   * Get last known location for a user.
-   * Used for impossible travel detection in risk scoring.
-   */
+  
+
+
+
   async getLastKnownLocation(
     userId: string
   ): Promise<{ country: string; city: string | null; timestamp: string; latitude: number | null; longitude: number | null } | null> {
     try {
-      const history = await this.getRecentHistory(userId, 1, 24); // Last 24 hours
+      const history = await this.getRecentHistory(userId, 1, 24); 
 
       if (history.length === 0 || !history[0].location) {
         return null;
@@ -284,25 +284,25 @@ export class FingerprintHistoryService {
     }
   }
 
-  /**
-   * Analyze location changes for a user (stub).
-   */
+  
+
+
   async analyzeLocationChanges(userId: string, _timeRangeHours: number = 168): Promise<LocationChange[]> {
     logger.debug('analyzeLocationChanges called', { userId });
     return [];
   }
 
-  /**
-   * Detect fingerprint changes for a user (stub).
-   */
+  
+
+
   async detectFingerprintChanges(userId: string, _timeRangeHours: number = 168): Promise<FingerprintChange[]> {
     logger.debug('detectFingerprintChanges called', { userId });
     return [];
   }
 
-  /**
-   * Get user activity summary (stub).
-   */
+  
+
+
   async getUserActivitySummary(userId: string, _timeRangeHours: number = 168): Promise<UserActivitySummary | null> {
     logger.debug('getUserActivitySummary called', { userId });
     return null;

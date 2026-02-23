@@ -1,14 +1,14 @@
-/**
- * Fingerprint Search Service
- *
- * High-performance fingerprint intelligence search service leveraging:
- * - Tempo (Primary): TraceQL queries for fast attribute-based search
- * - Loki (Fallback): LogQL queries for full-text search
- *
- * All external dependencies are injected via the config module.
- *
- * @module services/FingerprintSearchService
- */
+
+
+
+
+
+
+
+
+
+
+
 
 import {
   getScopedLogger,
@@ -19,9 +19,9 @@ import {
 
 const logger = getScopedLogger('fingerprint-search-service');
 
-/**
- * Search Filters Interface.
- */
+
+
+
 export interface SearchFilters {
   vpnDetected?: boolean;
   vpnProvider?: string;
@@ -70,9 +70,9 @@ export interface SearchFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
-/**
- * Search Result.
- */
+
+
+
 export interface SearchServiceResult {
   fingerprintId: string;
   firstSeen: string;
@@ -96,9 +96,9 @@ export interface SearchServiceResult {
   uniqueIPs: number;
 }
 
-/**
- * Paginated Search Results.
- */
+
+
+
 export interface SearchResults {
   results: SearchServiceResult[];
   totalResults: number;
@@ -108,9 +108,9 @@ export interface SearchResults {
   dataSource: 'tempo' | 'loki';
 }
 
-/**
- * Search Facets.
- */
+
+
+
 export interface ServiceSearchFacets {
   countries: Array<{ name: string; code: string; count: number }>;
   cities: Array<{ name: string; country: string; count: number }>;
@@ -121,9 +121,9 @@ export interface ServiceSearchFacets {
   operatingSystems: Array<{ os: string; version?: string; count: number }>;
 }
 
-/**
- * Quick Search Result.
- */
+
+
+
 export interface ServiceQuickSearchResult {
   type: 'fingerprint' | 'user' | 'ip';
   id: string;
@@ -136,9 +136,9 @@ export interface ServiceQuickSearchResult {
   };
 }
 
-/**
- * Export Result.
- */
+
+
+
 export interface ExportResult {
   downloadUrl: string;
   fileName: string;
@@ -146,14 +146,14 @@ export interface ExportResult {
   fileSizeBytes: number;
 }
 
-/**
- * Fingerprint Search Service.
- */
+
+
+
 export class FingerprintSearchService {
   private tempoService: TempoQueryServiceInterface | null;
   private facetsCache: Map<string, { facets: ServiceSearchFacets; expiresAt: number }>;
   private childSpanReader: ChildSpanReaderInterface | null;
-  private readonly FACETS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private readonly FACETS_CACHE_TTL = 5 * 60 * 1000; 
 
   constructor() {
     const config = getFingerprintConfig();
@@ -162,9 +162,9 @@ export class FingerprintSearchService {
     this.childSpanReader = config.childSpanReader ?? null;
   }
 
-  /**
-   * Comprehensive Search.
-   */
+  
+
+
   async search(filters: SearchFilters): Promise<SearchResults> {
     try {
       logger.info('Starting fingerprint search', { filters });
@@ -195,9 +195,9 @@ export class FingerprintSearchService {
     }
   }
 
-  /**
-   * Search using Tempo TraceQL.
-   */
+  
+
+
   private async searchTempo(filters: SearchFilters): Promise<Omit<SearchResults, 'dataSource'>> {
     const traceQL = this.buildTraceQLQuery(filters);
 
@@ -225,9 +225,9 @@ export class FingerprintSearchService {
     };
   }
 
-  /**
-   * Build TraceQL Query from Filters.
-   */
+  
+
+
   buildTraceQLQuery(filters: SearchFilters): string {
     const conditions: string[] = [];
 
@@ -350,9 +350,9 @@ export class FingerprintSearchService {
     return query;
   }
 
-  /**
-   * Convert Wildcard Pattern to Regex.
-   */
+  
+
+
   wildcardToRegex(pattern: string): string {
     let regex = pattern
       .replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -361,9 +361,9 @@ export class FingerprintSearchService {
     return `(?i)${regex}`;
   }
 
-  /**
-   * Transform Tempo Traces to SearchServiceResult[].
-   */
+  
+
+
   private async transformTracesToResults(traces: any[]): Promise<SearchServiceResult[]> {
     const fingerprintMap = new Map<string, any[]>();
 
@@ -439,9 +439,9 @@ export class FingerprintSearchService {
     return results;
   }
 
-  /**
-   * Extract geo location from trace with child span fallback.
-   */
+  
+
+
   private async extractGeoFromTrace(
     trace: any,
     attrs: Record<string, any>
@@ -475,7 +475,7 @@ export class FingerprintSearchService {
       };
     }
 
-    // Fallback to child span reader
+    
     if (this.childSpanReader) {
       const childGeo = await this.childSpanReader.readGeo(trace);
       if (childGeo) {
@@ -496,9 +496,9 @@ export class FingerprintSearchService {
     return { country: undefined, city: null, latitude: null, longitude: null, source: 'none' };
   }
 
-  /**
-   * Deduplicate results by fingerprint ID.
-   */
+  
+
+
   private deduplicateByFingerprint(results: SearchServiceResult[]): SearchServiceResult[] {
     const byFingerprint = new Map<string, SearchServiceResult>();
 
@@ -522,9 +522,9 @@ export class FingerprintSearchService {
     return Array.from(byFingerprint.values());
   }
 
-  /**
-   * Sort Results.
-   */
+  
+
+
   private sortResults(
     results: SearchServiceResult[],
     sortBy: SearchFilters['sortBy'],
@@ -572,9 +572,9 @@ export class FingerprintSearchService {
     return sorted;
   }
 
-  /**
-   * Paginate Results.
-   */
+  
+
+
   private paginateResults(
     results: SearchServiceResult[],
     page: number,
@@ -585,9 +585,9 @@ export class FingerprintSearchService {
     return results.slice(startIndex, endIndex);
   }
 
-  /**
-   * Parse Time Window.
-   */
+  
+
+
   parseTimeWindow(timeWindow: string): { start: number; end: number } {
     const endMs = Date.now();
     let durationMs = 7 * 24 * 60 * 60 * 1000;
@@ -612,9 +612,9 @@ export class FingerprintSearchService {
     };
   }
 
-  /**
-   * Quick Search (Autocomplete).
-   */
+  
+
+
   async quickSearch(
     query: string,
     type: 'fingerprint' | 'user' | 'ip' | 'all',
@@ -662,9 +662,9 @@ export class FingerprintSearchService {
     }
   }
 
-  /**
-   * Get Search Facets.
-   */
+  
+
+
   async getFacets(timeWindow: string = '7d'): Promise<ServiceSearchFacets> {
     const cacheKey = `facets:${timeWindow}`;
     const cached = this.facetsCache.get(cacheKey);
@@ -732,9 +732,9 @@ export class FingerprintSearchService {
     return facets;
   }
 
-  /**
-   * Export Results.
-   */
+  
+
+
   async exportResults(filters: SearchFilters & { format: string; includeTimeline?: boolean }): Promise<ExportResult> {
     logger.info('Exporting search results', { format: filters.format });
     const results = await this.search({ ...filters, pageSize: 10000 });

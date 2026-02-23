@@ -1,15 +1,15 @@
-/**
- * Service for fetching fingerprint intelligence data.
- *
- * **ARCHITECTURE**:
- * - PRIMARY: Tempo traces (FingerprintEnrichmentService writes spans with rich attributes)
- * - FALLBACK 1: Loki logs (component="fingerprint-enrichment")
- * - FALLBACK 2: Local file (development only)
- *
- * All external dependencies are injected via the config module.
- *
- * @module services/FingerprintDataService
- */
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -19,9 +19,9 @@ import type { MapMarker, HeatmapPoint, FingerprintGeoData } from '../types/maps.
 
 const logger = getScopedLogger('fingerprint-data-service');
 
-/**
- * Fingerprint record from Loki/Tempo/file sources.
- */
+
+
+
 export interface FingerprintRecord {
   timestamp: string;
   fingerprintId: string;
@@ -30,18 +30,18 @@ export interface FingerprintRecord {
   userHandle?: string;
   sessionId?: string;
 
-  // Geographic data
+  
   geoCountry?: string;
   geoCity?: string;
   geoLatitude?: number;
   geoLongitude?: number;
 
-  // VPN detection
+  
   vpnDetected: boolean;
   vpnProvider?: string;
   vpnConfidence?: string;
 
-  // Device & browser info
+  
   deviceType?: string;
   browserName?: string;
   browserVersion?: string;
@@ -49,17 +49,17 @@ export interface FingerprintRecord {
   osVersion?: string;
   userAgent?: string;
 
-  // Request details
+  
   url?: string;
   clientIp?: string;
 
-  // Navigation context
+  
   referrer?: string | null;
   currentUrl?: string;
   pathname?: string;
   hostname?: string;
 
-  // Risk scoring
+  
   riskScore?: number;
   riskTier?: string;
   eventType: string;
@@ -77,9 +77,9 @@ interface FingerprintStats {
   recentChanges: Array<{ timestamp: string; userId: string; userHandle?: string; country: string; eventType: string }>;
 }
 
-/**
- * Service for fetching fingerprint intelligence data.
- */
+
+
+
 export class FingerprintDataService {
   private lokiUrl: string;
   private useTempo: boolean;
@@ -87,15 +87,15 @@ export class FingerprintDataService {
   constructor() {
     const config = getFingerprintConfig();
     this.lokiUrl = config.lokiUrl ?? 'http://localhost:3100';
-    // Enable Tempo by default (can be disabled via env var for rollback)
+    
     this.useTempo = typeof process !== 'undefined'
       ? process.env.DISABLE_TEMPO_FINGERPRINTS !== 'true'
       : true;
   }
 
-  /**
-   * Development fallback: Read fingerprint records from local log file.
-   */
+  
+
+
   private async getFingerprintRecordsFromFile(timeRange: string = '7d', limit: number = 500): Promise<FingerprintRecord[]> {
     try {
       const config = getFingerprintConfig();
@@ -122,7 +122,7 @@ export class FingerprintDataService {
         try {
           const parsed = JSON.parse(line);
 
-          // Filter by component and time range
+          
           if (parsed.component !== 'fingerprint-enrichment') continue;
 
           const timestamp = parsed.timestamp || Date.now();
@@ -136,18 +136,18 @@ export class FingerprintDataService {
             userHandle: parsed.user_handle,
             sessionId: parsed.session_id,
 
-            // Geographic
+            
             geoCountry: parsed.geo_country,
             geoCity: parsed.geo_city,
             geoLatitude: parsed.geo_latitude != null ? parseFloat(parsed.geo_latitude) : undefined,
             geoLongitude: parsed.geo_longitude != null ? parseFloat(parsed.geo_longitude) : undefined,
 
-            // VPN
+            
             vpnDetected: parsed.vpn_detected === true || parsed.vpn_detected === 'true',
             vpnProvider: parsed.vpn_provider,
             vpnConfidence: parsed.vpn_confidence,
 
-            // Device & Browser
+            
             deviceType: parsed.device_type,
             browserName: parsed.browser_name,
             browserVersion: parsed.browser_version,
@@ -155,23 +155,23 @@ export class FingerprintDataService {
             osVersion: parsed.os_version,
             userAgent: parsed.user_agent,
 
-            // Request details
+            
             url: parsed.url,
             clientIp: parsed.client_ip || parsed.ip_raw,
 
-            // Navigation context
+            
             referrer: parsed.referrer,
             currentUrl: parsed.current_url,
             pathname: parsed.pathname,
             hostname: parsed.hostname,
 
-            // Risk
+            
             riskScore: parsed.risk_score ? parseInt(parsed.risk_score) : undefined,
             riskTier: parsed.risk_tier,
             eventType: parsed.event_type
           });
         } catch (_err) {
-          // Skip malformed lines
+          
           logger.debug('Skipped malformed log line');
         }
       }
@@ -186,17 +186,17 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Query fingerprint data with cascading fallback.
-   *
-   * 1. PRIMARY: Tempo traces (if enabled)
-   * 2. FALLBACK 1: Loki logs
-   * 3. FALLBACK 2: Local file (development only)
-   */
+  
+
+
+
+
+
+
   async getFingerprintRecords(timeRange: string = '7d', limit: number = 200): Promise<FingerprintRecord[]> {
     const config = getFingerprintConfig();
 
-    // Try Tempo first (primary source)
+    
     if (this.useTempo && config.tempoQueryService) {
       try {
         logger.info('Fetching fingerprint records from Tempo (primary)', { timeRange, limit });
@@ -212,7 +212,7 @@ export class FingerprintDataService {
       }
     }
 
-    // Fallback 1: Loki logs
+    
     if (config.observabilityFetcher) {
       try {
         const end = Date.now();
@@ -280,7 +280,7 @@ export class FingerprintDataService {
       }
     }
 
-    // Fallback 2: Read from local file in development
+    
     if (config.nodeEnv !== 'production') {
       const records = await this.getFingerprintRecordsFromFile(timeRange, limit);
       logger.info('Local file read successful', { count: records.length, source: 'file' });
@@ -291,9 +291,9 @@ export class FingerprintDataService {
     return [];
   }
 
-  /**
-   * Convert Tempo records to FingerprintRecord format.
-   */
+  
+
+
   private convertTempoRecords(tempoRecords: any[]): FingerprintRecord[] {
     return tempoRecords.map((tr: any) => ({
       timestamp: tr.timestamp,
@@ -316,16 +316,16 @@ export class FingerprintDataService {
     }));
   }
 
-  /**
-   * Get all records for a specific fingerprint within time window.
-   */
+  
+
+
   async getFingerprintRecordsById(
     fingerprintId: string,
     timeRange: string = '7d'
   ): Promise<FingerprintRecord[]> {
     const config = getFingerprintConfig();
     try {
-      // Try Tempo first (if enabled)
+      
       if (this.useTempo && config.tempoQueryService) {
         try {
           const tempoRecords = await config.tempoQueryService.queryFingerprints(timeRange, { 'fingerprint.id': fingerprintId });
@@ -347,7 +347,7 @@ export class FingerprintDataService {
         }
       }
 
-      // Fallback to Loki
+      
       if (config.observabilityFetcher) {
         const response = await config.observabilityFetcher.fetchLoki('/loki/api/v1/query_range', {
           method: 'POST',
@@ -422,9 +422,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get total unique fingerprints.
-   */
+  
+
+
   async getTotalFingerprints(timeRange: string = '7d'): Promise<number> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -438,9 +438,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get count of users using VPN.
-   */
+  
+
+
   async getVpnUserCount(timeRange: string = '7d'): Promise<number> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -456,9 +456,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get fingerprints by country with VPN percentage.
-   */
+  
+
+
   async getFingerprintsByCountry(timeRange: string = '7d', limit: number = 10): Promise<FingerprintStats['byCountry']> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -503,9 +503,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get fingerprints by device type.
-   */
+  
+
+
   async getFingerprintsByDevice(timeRange: string = '7d'): Promise<FingerprintStats['byDevice']> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -529,9 +529,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get high-risk fingerprints (risk score > 50).
-   */
+  
+
+
   async getHighRiskFingerprints(timeRange: string = '7d', limit: number = 10): Promise<FingerprintStats['highRiskFingerprints']> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -560,9 +560,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get recent fingerprint changes (mismatches).
-   */
+  
+
+
   async getRecentFingerprintChanges(timeRange: string = '7d', limit: number = 20): Promise<FingerprintStats['recentChanges']> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -587,9 +587,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get geographic coordinates for all fingerprints (for map visualization).
-   */
+  
+
+
   async getFingerprintGeoData(timeRange: string = '7d'): Promise<FingerprintGeoData> {
     try {
       const records = await this.getFingerprintRecords(timeRange);
@@ -662,9 +662,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Get comprehensive fingerprint statistics.
-   */
+  
+
+
   async getFingerprintStats(timeRange: string = '7d'): Promise<FingerprintStats> {
     try {
       const [
@@ -718,9 +718,9 @@ export class FingerprintDataService {
     }
   }
 
-  /**
-   * Parse time range string to milliseconds.
-   */
+  
+
+
   parseTimeRange(timeRange: string): number {
     const match = timeRange.match(/^(\d+)([smhd])$/);
     if (!match) {
@@ -741,9 +741,9 @@ export class FingerprintDataService {
     return value * multipliers[unit];
   }
 
-  /**
-   * Parse browser name from user agent string.
-   */
+  
+
+
   parseBrowserName(userAgent?: string): string {
     if (!userAgent) return 'Unknown';
     if (userAgent.includes('Firefox/')) return 'Firefox';
@@ -757,9 +757,9 @@ export class FingerprintDataService {
     return 'Unknown';
   }
 
-  /**
-   * Parse browser version from user agent string.
-   */
+  
+
+
   parseBrowserVersion(userAgent?: string): string {
     if (!userAgent) return 'Unknown';
     const firefoxMatch = userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/);
@@ -775,9 +775,9 @@ export class FingerprintDataService {
     return 'Unknown';
   }
 
-  /**
-   * Parse operating system from user agent string.
-   */
+  
+
+
   parseOperatingSystem(userAgent?: string): string {
     if (!userAgent) return 'Unknown';
     if (userAgent.includes('Windows NT 10')) return 'Windows 10';
@@ -798,11 +798,11 @@ export class FingerprintDataService {
     return 'Unknown';
   }
 
-  /**
-   * Calculate start time for Loki queries based on time range.
-   */
+  
+
+
   private calculateStartTime(timeRange: string): number {
-    const now = Date.now() * 1000000; // Convert to nanoseconds
+    const now = Date.now() * 1000000; 
     const ranges: Record<string, number> = {
       '1h': 1 * 60 * 60 * 1000000000,
       '24h': 24 * 60 * 60 * 1000000000,

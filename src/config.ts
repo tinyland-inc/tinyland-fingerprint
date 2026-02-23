@@ -1,16 +1,16 @@
-/**
- * Fingerprint package configuration via dependency injection.
- *
- * All external dependencies (logging, tracing, security functions, data fetchers)
- * are provided through configuration callbacks rather than direct imports.
- * When a callback is not provided, a sensible no-op default is used.
- *
- * @module config
- */
 
-/**
- * Logger interface matching common structured loggers.
- */
+
+
+
+
+
+
+
+
+
+
+
+
 export interface FingerprintLogger {
   info: (...args: any[]) => void;
   warn: (...args: any[]) => void;
@@ -18,9 +18,9 @@ export interface FingerprintLogger {
   debug: (...args: any[]) => void;
 }
 
-/**
- * File logger interface for audit trails (writes to file for Alloy/Loki collection).
- */
+
+
+
 export interface FingerprintFileLogger {
   write: (entry: {
     level: string;
@@ -32,9 +32,9 @@ export interface FingerprintFileLogger {
   }) => Promise<void>;
 }
 
-/**
- * Span interface for tracing instrumentation.
- */
+
+
+
 export interface FingerprintSpan {
   setAttribute: (key: string, value: any) => void;
   recordException: (error: Error) => void;
@@ -42,16 +42,16 @@ export interface FingerprintSpan {
   end: () => void;
 }
 
-/**
- * Tracer interface for creating active spans.
- */
+
+
+
 export interface FingerprintTracer {
   startActiveSpan: <T>(name: string, fn: (span: FingerprintSpan) => Promise<T>) => Promise<T>;
 }
 
-/**
- * GeoLocation result from IP lookup.
- */
+
+
+
 export interface GeoLocationResult {
   country: string;
   countryCode: string;
@@ -63,9 +63,9 @@ export interface GeoLocationResult {
   source?: 'browser-geolocation' | 'maxmind-geoip' | 'mock-development';
 }
 
-/**
- * VPN detection result.
- */
+
+
+
 export interface VPNDetectionResult {
   isVPN: boolean;
   provider: string | null;
@@ -74,9 +74,9 @@ export interface VPNDetectionResult {
   details?: string;
 }
 
-/**
- * Risk score result from security analysis.
- */
+
+
+
 export interface RiskScoreResult {
   score: number;
   tier: 'low' | 'medium' | 'high' | 'critical';
@@ -84,16 +84,16 @@ export interface RiskScoreResult {
   recommendation: string;
 }
 
-/**
- * Observability data fetcher (Loki, Tempo).
- */
+
+
+
 export interface ObservabilityFetcher {
   fetchLoki: (path: string, options?: RequestInit) => Promise<Response>;
 }
 
-/**
- * Tempo query service interface for trace-based queries.
- */
+
+
+
 export interface TempoQueryServiceInterface {
   queryFingerprints: (
     timeRange: string,
@@ -112,9 +112,9 @@ export interface TempoQueryServiceInterface {
   ) => Promise<string[]>;
 }
 
-/**
- * Child span reader interface for backward-compatible geo data extraction.
- */
+
+
+
 export interface ChildSpanReaderInterface {
   readGeo: (trace: any) => Promise<{
     country: string;
@@ -125,9 +125,9 @@ export interface ChildSpanReaderInterface {
   } | null>;
 }
 
-/**
- * User flags fetcher for authenticated user context.
- */
+
+
+
 export interface UserFlagsFetcher {
   getUserFlags: (userId: string) => Promise<{
     totpEnabled: boolean;
@@ -138,18 +138,18 @@ export interface UserFlagsFetcher {
   } | undefined>;
 }
 
-/**
- * Reverse geocoding function.
- */
+
+
+
 export type ReverseGeocodeFn = (
   latitude: number,
   longitude: number,
   context?: { fingerprintId?: string; sessionId?: string | null }
 ) => Promise<GeoLocationResult | null>;
 
-/**
- * Consent categories (locally defined to avoid monorepo dependency).
- */
+
+
+
 export interface ConsentCategories {
   essential: boolean;
   preferences: boolean;
@@ -158,9 +158,9 @@ export interface ConsentCategories {
   performance: boolean;
 }
 
-/**
- * Default consent state: essential only.
- */
+
+
+
 export const DEFAULT_CONSENT: ConsentCategories = {
   essential: true,
   preferences: false,
@@ -169,9 +169,9 @@ export const DEFAULT_CONSENT: ConsentCategories = {
   performance: false,
 };
 
-/**
- * Restorable settings (locally defined to avoid monorepo dependency).
- */
+
+
+
 export interface RestorableSettings {
   lastKnownLocation: {
     city: string | null;
@@ -211,9 +211,9 @@ export interface RestorableSettings {
   consentCategories?: ConsentCategories;
 }
 
-/**
- * Consent record (locally defined to avoid monorepo dependency).
- */
+
+
+
 export interface ConsentRecord {
   fingerprintId: string;
   categories: ConsentCategories;
@@ -228,21 +228,21 @@ export interface ConsentRecord {
   consentVersion: string;
 }
 
-/**
- * Complete fingerprint configuration.
- *
- * All callbacks are optional. When not provided, sensible defaults are used:
- * - Logger: `console` fallback
- * - Security functions: identity/no-op
- * - Tracing: no-op spans
- * - Fetchers: throw errors (must be provided for data services)
- */
+
+
+
+
+
+
+
+
+
 export interface FingerprintConfig {
-  // Logging
+  
   logger?: FingerprintLogger;
   scopedLogger?: (scope: string) => FingerprintLogger;
 
-  // Tracing (optional OTel integration)
+  
   createSpan?: <T>(
     name: string,
     fn: (span: FingerprintSpan) => Promise<T>,
@@ -250,7 +250,7 @@ export interface FingerprintConfig {
   ) => Promise<T>;
   getTracer?: () => FingerprintTracer;
 
-  // Security functions (from tinyland-security or config injection)
+  
   hashFingerprint?: (fp: string) => string | Promise<string>;
   hashIp?: (ip: string) => string;
   encryptIP?: (ip: string) => string;
@@ -261,33 +261,33 @@ export interface FingerprintConfig {
   isGeoIPAvailable?: () => boolean;
   reverseGeocode?: ReverseGeocodeFn;
 
-  // File logger for audit trails
+  
   fileLogger?: FingerprintFileLogger;
 
-  // Observability data sources
+  
   observabilityFetcher?: ObservabilityFetcher;
   tempoQueryService?: TempoQueryServiceInterface;
   childSpanReader?: ChildSpanReaderInterface;
 
-  // User data fetcher
+  
   userFlagsFetcher?: UserFlagsFetcher;
 
-  // Observability config
+  
   lokiUrl?: string;
 
-  // Data directory
+  
   dataDir?: string;
 
-  // Consent defaults
+  
   defaultConsent?: ConsentCategories;
 
-  // Environment
+  
   nodeEnv?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Singleton configuration
-// ---------------------------------------------------------------------------
+
+
+
 
 const noopLogger: FingerprintLogger = {
   info: () => {},
@@ -305,30 +305,30 @@ const consoleLogger: FingerprintLogger = {
 
 let _config: FingerprintConfig = {};
 
-/**
- * Configure the fingerprint package.
- *
- * Call this once at application startup to inject external dependencies.
- *
- * @example
- * ```typescript
- * import { configureFingerprint } from '@tummycrypt/tinyland-fingerprint';
- * configureFingerprint({
- *   logger: myLogger,
- *   hashFingerprint: myHashFn,
- *   detectVPN: myVpnDetector,
- * });
- * ```
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export function configureFingerprint(config: Partial<FingerprintConfig>): void {
   _config = { ..._config, ...config };
 }
 
-/**
- * Get the current fingerprint configuration.
- *
- * Returns the merged configuration with sensible defaults for missing callbacks.
- */
+
+
+
+
+
 export function getFingerprintConfig(): Required<
   Pick<FingerprintConfig, 'logger' | 'nodeEnv' | 'defaultConsent'>
 > &
@@ -341,12 +341,12 @@ export function getFingerprintConfig(): Required<
   };
 }
 
-/**
- * Get a scoped logger from configuration.
- *
- * If `scopedLogger` is configured, uses that factory.
- * Otherwise returns the configured logger or console fallback.
- */
+
+
+
+
+
+
 export function getScopedLogger(scope: string): FingerprintLogger {
   const config = getFingerprintConfig();
   if (config.scopedLogger) {
@@ -355,16 +355,16 @@ export function getScopedLogger(scope: string): FingerprintLogger {
   return config.logger;
 }
 
-/**
- * Reset configuration to defaults (primarily for testing).
- */
+
+
+
 export function resetFingerprintConfig(): void {
   _config = {};
 }
 
-/**
- * No-op span for when tracing is not configured.
- */
+
+
+
 export const noopSpan: FingerprintSpan = {
   setAttribute: () => {},
   recordException: () => {},
@@ -372,9 +372,9 @@ export const noopSpan: FingerprintSpan = {
   end: () => {},
 };
 
-/**
- * Create a span using configured tracing, or execute directly with no-op span.
- */
+
+
+
 export async function withSpan<T>(
   name: string,
   fn: (span: FingerprintSpan) => Promise<T>,
@@ -387,9 +387,9 @@ export async function withSpan<T>(
   return fn(noopSpan);
 }
 
-/**
- * Use the configured tracer to start an active span, or execute with no-op.
- */
+
+
+
 export async function withTracerSpan<T>(
   name: string,
   fn: (span: FingerprintSpan) => Promise<T>

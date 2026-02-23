@@ -1,13 +1,13 @@
-/**
- * Fingerprint Settings Service
- *
- * Uses TempoQL to restore user settings from fingerprint history.
- * This is a NOVEL ACHIEVEMENT: using Tempo as a fingerprint-indexed settings database.
- *
- * All external dependencies are injected via the config module.
- *
- * @module services/FingerprintSettingsService
- */
+
+
+
+
+
+
+
+
+
+
 
 import {
   getScopedLogger,
@@ -22,15 +22,15 @@ import {
 
 const logger = getScopedLogger('fingerprint-settings-service');
 
-// OTel status codes
+
 const SpanStatusCode = {
   OK: 1,
   ERROR: 2,
 };
 
-/**
- * Complete fingerprint settings restored from Tempo.
- */
+
+
+
 export interface FingerprintSettings {
   categories: ConsentCategories;
   preciseLocation: boolean;
@@ -69,9 +69,9 @@ export interface FingerprintSettings {
   consentTimestamp: string | null;
 }
 
-/**
- * Visit history entry for fingerprint.
- */
+
+
+
 export interface VisitSummary {
   timestamp: string;
   pathname: string | null;
@@ -83,9 +83,9 @@ export interface VisitSummary {
   device: string | null;
 }
 
-/**
- * Default settings for first-time visitors.
- */
+
+
+
 export function getDefaultSettings(): FingerprintSettings {
   return {
     categories: { ...DEFAULT_CONSENT },
@@ -126,9 +126,9 @@ export function getDefaultSettings(): FingerprintSettings {
   };
 }
 
-/**
- * Restore fingerprint settings from Tempo trace history.
- */
+
+
+
 export async function restoreFingerprintSettings(
   fingerprintId: string
 ): Promise<RestorableSettings | null> {
@@ -218,9 +218,9 @@ export async function restoreFingerprintSettings(
   });
 }
 
-/**
- * Get the total number of visits for a fingerprint.
- */
+
+
+
 export async function getFingerprintVisitCount(fingerprintId: string): Promise<number> {
   return withTracerSpan('fingerprint.visitCount', async (span: FingerprintSpan) => {
     const config = getFingerprintConfig();
@@ -258,9 +258,9 @@ export async function getFingerprintVisitCount(fingerprintId: string): Promise<n
   });
 }
 
-/**
- * Calculate time since last visit.
- */
+
+
+
 export function getTimeSinceLastVisit(timestamp: string): { value: number; unit: string } {
   const lastVisit = new Date(timestamp);
   const now = new Date();
@@ -279,17 +279,17 @@ export function getTimeSinceLastVisit(timestamp: string): { value: number; unit:
   return { value: diffMonths, unit: diffMonths === 1 ? 'month' : 'months' };
 }
 
-/**
- * Format time since last visit as human-readable string.
- */
+
+
+
 export function formatTimeSinceLastVisit(timestamp: string): string {
   const { value, unit } = getTimeSinceLastVisit(timestamp);
   return `${value} ${unit} ago`;
 }
 
-/**
- * Check if fingerprint has previous consent.
- */
+
+
+
 export async function hasPreviousConsent(fingerprintId: string): Promise<boolean> {
   return withTracerSpan('fingerprint.hasConsent', async (span: FingerprintSpan) => {
     const config = getFingerprintConfig();
@@ -327,9 +327,9 @@ export async function hasPreviousConsent(fingerprintId: string): Promise<boolean
   });
 }
 
-/**
- * Restore ALL settings for a fingerprint from Tempo.
- */
+
+
+
 export async function restoreFullSettings(
   fingerprintId: string
 ): Promise<FingerprintSettings> {
@@ -361,7 +361,7 @@ export async function restoreFullSettings(
           now
         ) || [];
       } catch {
-        // consent.submission is fallback only
+        
       }
 
       span.setAttribute('consent.traces.count', consentTraces?.length || 0);
@@ -423,7 +423,7 @@ export async function restoreFullSettings(
         }
       }
 
-      // FALLBACK: consent.submission spans (legacy flow)
+      
       if (!consentFound && consentTraces && consentTraces.length > 0) {
         const sortedConsent = [...consentTraces].sort((a: any, b: any) => {
           const aTime = parseInt(a.startTimeUnixNano || '0');
@@ -463,7 +463,7 @@ export async function restoreFullSettings(
         }
       }
 
-      // Extract device/location from most recent enrichment trace
+      
       if (enrichmentTraces && enrichmentTraces.length > 0) {
         const latestEnrichment = enrichmentTraces[0];
         settings.lastVisit = latestEnrichment.timestamp;
@@ -533,9 +533,9 @@ export async function restoreFullSettings(
   });
 }
 
-/**
- * Get visit history summary for fingerprint.
- */
+
+
+
 export async function getVisitHistory(
   fingerprintId: string,
   limit: number = 10
@@ -584,9 +584,9 @@ export async function getVisitHistory(
   });
 }
 
-/**
- * Helper to extract span attributes from Tempo search response trace.
- */
+
+
+
 function extractSpanAttributes(trace: any): Record<string, string> | null {
   try {
     const span = trace?.spanSet?.spans?.[0];

@@ -1,11 +1,11 @@
-/**
- * Browser Fingerprint Validation Middleware
- *
- * Validates browser fingerprints to detect session hijacking attempts.
- * All external dependencies are injected via the config module.
- *
- * @module middleware/validation
- */
+
+
+
+
+
+
+
+
 
 import { getScopedLogger, getFingerprintConfig } from '../config.js';
 import type { FingerprintRequestContext, ConsentPreferenceData } from '../services/FingerprintEnrichmentService.js';
@@ -21,14 +21,14 @@ interface SessionFingerprint {
   userId: string;
 }
 
-// In-memory store (TODO: Replace with Redis in production for multi-instance support)
+
 const sessionFingerprints = new Map<string, SessionFingerprint>();
 
-/**
- * Store fingerprint for new session.
- *
- * Called after successful login to establish baseline fingerprint.
- */
+
+
+
+
+
 export async function storeFingerprint(
   sessionId: string,
   userId: string,
@@ -54,17 +54,17 @@ export async function storeFingerprint(
   });
 }
 
-/**
- * Validate fingerprint matches stored value.
- *
- * Returns validation result with detailed reason for failure.
- */
+
+
+
+
+
 export async function validateFingerprint(
   ctx: FingerprintRequestContext
 ): Promise<{ valid: boolean; reason?: string }> {
   const config = getFingerprintConfig();
 
-  // Skip validation if not authenticated
+  
   if (!ctx.user || !ctx.session) {
     return { valid: true };
   }
@@ -72,7 +72,7 @@ export async function validateFingerprint(
   const sessionId = ctx.session.id!;
   const clientFingerprint = ctx.cookies?.get('fp_id');
 
-  // No fingerprint cookie
+  
   if (!clientFingerprint) {
     logger.warn('Missing fingerprint cookie', {
       'session.id': sessionId,
@@ -83,7 +83,7 @@ export async function validateFingerprint(
     return { valid: true, reason: 'missing_fingerprint_cookie' };
   }
 
-  // Check if we have stored fingerprint
+  
   const stored = sessionFingerprints.get(sessionId);
   if (!stored) {
     logger.warn('No stored fingerprint for session', {
@@ -96,12 +96,12 @@ export async function validateFingerprint(
     return { valid: true };
   }
 
-  // Hash incoming fingerprint and compare
+  
   const hashFn = config.hashFingerprint ?? ((fp: string) => fp);
   const clientFingerprintHash = await Promise.resolve(hashFn(clientFingerprint));
 
   if (clientFingerprintHash !== stored.fingerprintHash) {
-    // CRITICAL SECURITY EVENT: Fingerprint mismatch
+    
     logger.error('Session hijacking detected: Fingerprint mismatch', {
       'session.id': sessionId,
       'user.id': ctx.user.id!,
@@ -131,11 +131,11 @@ export async function validateFingerprint(
     return { valid: false, reason: 'fingerprint_mismatch' };
   }
 
-  // Update last validated timestamp
+  
   stored.lastValidated = new Date();
   sessionFingerprints.set(sessionId, stored);
 
-  // Enrich fingerprint on successful validation
+  
   try {
     await enrichFingerprintOnValidation(ctx, clientFingerprint);
     logger.info('Fingerprint enriched on validation', {
@@ -152,9 +152,9 @@ export async function validateFingerprint(
   return { valid: true };
 }
 
-/**
- * Remove fingerprint when session ends.
- */
+
+
+
 export function clearFingerprint(sessionId: string): void {
   const removed = sessionFingerprints.delete(sessionId);
 
@@ -166,17 +166,17 @@ export function clearFingerprint(sessionId: string): void {
   }
 }
 
-/**
- * Get session fingerprint info (for debugging).
- */
+
+
+
 export function getSessionFingerprint(sessionId: string): SessionFingerprint | null {
   return sessionFingerprints.get(sessionId) || null;
 }
 
-/**
- * Clean up expired fingerprints (run periodically).
- * Remove fingerprints older than 30 days.
- */
+
+
+
+
 export function cleanExpiredFingerprints(): number {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   let removed = 0;

@@ -1,13 +1,13 @@
-/**
- * @tummycrypt/tinyland-fingerprint
- *
- * Fingerprint intelligence services: enrichment, search, history,
- * settings, validation, and caching.
- *
- * @module tinyland-fingerprint
- */
 
-// Configuration
+
+
+
+
+
+
+
+
+
 export {
   configureFingerprint,
   getFingerprintConfig,
@@ -35,7 +35,7 @@ export {
   type ConsentRecord,
 } from './config.js';
 
-// Types
+
 export type {
   DeviceType,
   EnrichedFingerprint,
@@ -61,7 +61,7 @@ export type {
   FingerprintGeoData,
 } from './types/maps.js';
 
-// Services
+
 export {
   FingerprintDataService,
   type FingerprintRecord,
@@ -113,7 +113,7 @@ export {
   type VisitSummary,
 } from './services/FingerprintSettingsService.js';
 
-// Middleware
+
 export {
   storeFingerprint,
   validateFingerprint,
@@ -122,7 +122,7 @@ export {
   cleanExpiredFingerprints,
 } from './middleware/validation.js';
 
-// Cache
+
 export {
   wasRecentlyLogged,
   markAsLogged,

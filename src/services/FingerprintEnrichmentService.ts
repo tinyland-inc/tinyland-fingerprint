@@ -1,14 +1,14 @@
-/**
- * Fingerprint Enrichment Service
- *
- * Comprehensive tagging and logging for browser fingerprints.
- * Links fingerprints to IPs, browser data, cookies, sessions, locations, VPN detection,
- * and user stats.
- *
- * All external dependencies are injected via the config module.
- *
- * @module services/FingerprintEnrichmentService
- */
+
+
+
+
+
+
+
+
+
+
+
 
 import { getScopedLogger, getFingerprintConfig, withSpan, type FingerprintSpan } from '../config.js';
 import type { EnrichedFingerprint, DeviceType } from '../types/fingerprint.js';
@@ -16,12 +16,12 @@ import { UAParser } from 'ua-parser-js';
 
 const logger = getScopedLogger('fingerprint-enrichment');
 
-// Re-export for backward compatibility
+
 export type { EnrichedFingerprint } from '../types/fingerprint.js';
 
-/**
- * Consent and preference data for enrichment.
- */
+
+
+
 export interface ConsentPreferenceData {
   consent?: {
     categories?: string[];
@@ -54,15 +54,15 @@ export interface ConsentPreferenceData {
   };
 }
 
-/**
- * Request-like interface to decouple from SvelteKit RequestEvent.
- */
+
+
+
 export interface FingerprintRequestContext {
   headers: {
     get: (name: string) => string | null;
   };
   url: string;
-  // Session / user context from locals
+  
   session?: {
     id?: string;
     userId?: string;
@@ -72,17 +72,17 @@ export interface FingerprintRequestContext {
     username?: string;
     role?: string;
   };
-  // Cookie accessor
+  
   cookies?: {
     get: (name: string) => string | undefined;
   };
-  // Client address fallback
+  
   getClientAddress?: () => string;
 }
 
-/**
- * Extract device type from User-Agent.
- */
+
+
+
 export function classifyDevice(userAgent: string): DeviceType {
   const ua = userAgent.toLowerCase();
   if (/(iphone|ipod|android.*mobile|windows phone|blackberry)/i.test(ua)) return 'mobile';
@@ -91,11 +91,11 @@ export function classifyDevice(userAgent: string): DeviceType {
   return 'unknown';
 }
 
-/**
- * Mask IP address for display.
- * IPv4: 192.168.1.1 -> 192.168.*.*
- * IPv6: 2001:db8::1 -> 2001:db8::*
- */
+
+
+
+
+
 export function maskIpAddress(ip: string): string {
   if (ip.includes(':')) {
     const parts = ip.split(':');
@@ -106,9 +106,9 @@ export function maskIpAddress(ip: string): string {
   }
 }
 
-/**
- * Parse detailed fingerprint components from FingerprintJS.
- */
+
+
+
 function parseDetailedComponents(detailedFingerprint: any): EnrichedFingerprint['components'] {
   if (!detailedFingerprint || !detailedFingerprint.components) {
     return {};
@@ -133,9 +133,9 @@ function parseDetailedComponents(detailedFingerprint: any): EnrichedFingerprint[
   };
 }
 
-/**
- * Parse user agent string to extract browser, OS, and engine information.
- */
+
+
+
 export function parseUserAgent(userAgent: string) {
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
@@ -151,18 +151,18 @@ export function parseUserAgent(userAgent: string) {
   };
 }
 
-/**
- * Enrich fingerprint with comprehensive context.
- *
- * This is the main entry point - call this when creating or validating sessions.
- *
- * @param ctx - Request context (decoupled from SvelteKit)
- * @param fingerprintId - FingerprintJS visitor ID from client
- * @param detailedFingerprint - Optional: Full FingerprintJS result with components
- * @param eventType - Type of event triggering enrichment
- * @param consentPreferences - Optional: User consent and preference data
- * @returns Enriched fingerprint data
- */
+
+
+
+
+
+
+
+
+
+
+
+
 export async function enrichFingerprint(
   ctx: FingerprintRequestContext,
   fingerprintId: string,
@@ -176,7 +176,7 @@ export async function enrichFingerprint(
     span.setAttribute('fingerprint.id', fingerprintId);
     span.setAttribute('fingerprint.event_type', eventType);
 
-    // Extract raw IP and strip port number if present
+    
     const rawIpWithPort =
       ctx.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
       ctx.headers.get('x-real-ip') ||
@@ -187,7 +187,7 @@ export async function enrichFingerprint(
       ? rawIpWithPort.split(':')[0]
       : rawIpWithPort;
 
-    // Hash fingerprint and IP (triple storage: raw, encrypted, hashed)
+    
     const hashFp = config.hashFingerprint ?? ((fp: string) => fp);
     const encryptIp = config.encryptIP ?? ((ip: string) => ip);
     const hashIpFn = config.hashIp ?? ((ip: string) => ip);
@@ -197,12 +197,12 @@ export async function enrichFingerprint(
     const encryptedIp = encryptIp(rawIp);
     const hashedIp = hashIpFn(rawIp);
 
-    // Extract User-Agent
+    
     const userAgent = ctx.headers.get('user-agent') || 'unknown';
     const deviceType = classifyDevice(userAgent);
     const parsedUA = parseUserAgent(userAgent);
 
-    // Span attributes
+    
     span.setAttribute('device.type', deviceType);
     if (ctx.session?.id) span.setAttribute('session.id', ctx.session.id);
     if (ctx.session?.userId) span.setAttribute('user.id', ctx.session.userId);
@@ -219,7 +219,7 @@ export async function enrichFingerprint(
     span.setAttribute('engine.name', parsedUA.engine || 'unknown');
     span.setAttribute('engine.version', parsedUA.engine_version || 'unknown');
 
-    // Navigation context
+    
     const referrer = ctx.headers.get('referer') || null;
     const currentUrl = ctx.url;
     let pathname = '/';
@@ -229,7 +229,7 @@ export async function enrichFingerprint(
       pathname = url.pathname;
       hostname = url.hostname;
     } catch {
-      // Invalid URL, use defaults
+      
     }
 
     span.setAttribute('navigation.pathname', pathname);
@@ -242,11 +242,11 @@ export async function enrichFingerprint(
         span.setAttribute('navigation.referrer_hostname', referrerUrl.hostname);
         span.setAttribute('navigation.is_external_referral', referrerUrl.hostname !== hostname);
       } catch {
-        // Invalid referrer URL
+        
       }
     }
 
-    // GeoIP lookup
+    
     let geoLocation: EnrichedFingerprint['geoLocation'] = null;
 
     const devLat = ctx.headers.get('x-dev-latitude');
@@ -319,7 +319,7 @@ export async function enrichFingerprint(
       span.setAttribute('geo.lookup_result', 'skipped');
     }
 
-    // VPN detection
+    
     const detectVPNFn = config.detectVPN ?? (async () => ({
       isVPN: false,
       provider: null,
@@ -328,17 +328,17 @@ export async function enrichFingerprint(
     }));
     const vpnDetection = await detectVPNFn(rawIp);
 
-    // Cookie presence check
+    
     const sessionCookiePresent = !!ctx.cookies?.get('session_id');
     const fingerprintCookiePresent = !!ctx.cookies?.get('fp_id');
 
-    // User context
+    
     const userId = ctx.session?.userId || ctx.user?.id || null;
     const userHandle = ctx.user?.username || null;
     const userRole = ctx.user?.role || null;
     const sessionId = ctx.session?.id || null;
 
-    // User flags (if authenticated)
+    
     let userFlags: EnrichedFingerprint['userFlags'] | undefined;
     if (userId && config.userFlagsFetcher) {
       try {
@@ -351,10 +351,10 @@ export async function enrichFingerprint(
       }
     }
 
-    // Parse detailed components
+    
     const components = parseDetailedComponents(detailedFingerprint);
 
-    // Determine severity
+    
     let severity: EnrichedFingerprint['severity'] = 'info';
     if (eventType === 'fingerprint_mismatch') {
       severity = 'critical';
@@ -362,7 +362,7 @@ export async function enrichFingerprint(
       severity = 'warning';
     }
 
-    // Build enriched fingerprint
+    
     const enriched: EnrichedFingerprint = {
       fingerprintId,
       fingerprintHash,
@@ -386,11 +386,11 @@ export async function enrichFingerprint(
       severity
     };
 
-    // Calculate risk score
+    
     if (config.calculateRiskScore) {
       try {
         const riskScore = config.calculateRiskScore(enriched, {
-          previousLocation: null, // Could be fetched from history service
+          previousLocation: null, 
           concurrentSessions: undefined
         });
 
@@ -414,14 +414,14 @@ export async function enrichFingerprint(
       }
     }
 
-    // Add enrichment summary to span
+    
     span.setAttribute('enrichment.severity', enriched.severity);
     span.setAttribute('enrichment.vpn_detected', vpnDetection.isVPN);
     if (enriched.riskScore) {
       span.setAttribute('enrichment.risk_tier', enriched.riskScore.tier);
     }
 
-    // Add geo data to span
+    
     if (geoLocation) {
       span.setAttribute('geo.country', geoLocation.country);
       span.setAttribute('geo.city', geoLocation.city || 'unknown');
@@ -433,7 +433,7 @@ export async function enrichFingerprint(
       }
     }
 
-    // Add consent and preference data to span
+    
     if (consentPreferences?.consent) {
       const { categories, categoriesRecord, timestamp, version, preciseLocation, ageVerified, optionalHandle } = consentPreferences.consent;
 
@@ -466,16 +466,16 @@ export async function enrichFingerprint(
       if (contentPage?.forceA11y !== undefined) span.setAttribute('preferences.contentPage.forceA11y', contentPage.forceA11y);
     }
 
-    // Log enriched fingerprint
+    
     await logEnrichedFingerprint(enriched);
 
     return enriched;
-  }, { kind: 1 /* SpanKind.INTERNAL */ });
+  }, { kind: 1  });
 }
 
-/**
- * Log enriched fingerprint to structured logger and file logger.
- */
+
+
+
 async function logEnrichedFingerprint(enriched: EnrichedFingerprint): Promise<void> {
   const config = getFingerprintConfig();
   const parsedUA = parseUserAgent(enriched.userAgent);
@@ -536,7 +536,7 @@ async function logEnrichedFingerprint(enriched: EnrichedFingerprint): Promise<vo
 
   logger.info('Fingerprint enrichment logged', stringLogData);
 
-  // Log to file for Alloy collection (goes to Loki)
+  
   if (config.fileLogger) {
     await config.fileLogger.write({
       level: enriched.severity === 'critical' ? 'warn' : 'info',
@@ -549,9 +549,9 @@ async function logEnrichedFingerprint(enriched: EnrichedFingerprint): Promise<vo
   }
 }
 
-/**
- * Enrich fingerprint on session creation.
- */
+
+
+
 export async function enrichFingerprintOnSessionCreate(
   ctx: FingerprintRequestContext,
   fingerprintId: string,
@@ -561,9 +561,9 @@ export async function enrichFingerprintOnSessionCreate(
   return enrichFingerprint(ctx, fingerprintId, detailedFingerprint, 'session_created', consentPreferences);
 }
 
-/**
- * Enrich fingerprint on session validation.
- */
+
+
+
 export async function enrichFingerprintOnValidation(
   ctx: FingerprintRequestContext,
   fingerprintId: string,
@@ -572,9 +572,9 @@ export async function enrichFingerprintOnValidation(
   return enrichFingerprint(ctx, fingerprintId, undefined, 'session_validated', consentPreferences);
 }
 
-/**
- * Enrich fingerprint on mismatch detection.
- */
+
+
+
 export async function enrichFingerprintOnMismatch(
   ctx: FingerprintRequestContext,
   fingerprintId: string,
@@ -603,9 +603,9 @@ export async function enrichFingerprintOnMismatch(
   return enriched;
 }
 
-/**
- * Get enrichment service health status.
- */
+
+
+
 export function getEnrichmentServiceHealth() {
   const config = getFingerprintConfig();
   return {

@@ -1,49 +1,49 @@
-/**
- * Fingerprint Session Cache
- *
- * Deduplicates fingerprint enrichment logging at the source.
- * Tracks recently-logged fingerprints to prevent duplicate writes for the same
- * fingerprint+session within a configurable time window.
- *
- * Impact: Reduces log volume by 99.7% (1.8M -> 5.4k logs/7d)
- *
- * @module cache
- */
+
+
+
+
+
+
+
+
+
+
+
 
 import { getScopedLogger } from './config.js';
 
 const logger = getScopedLogger('fingerprint-cache');
 
-/**
- * Cache entry: Last log timestamp for fingerprint+session tuple.
- */
+
+
+
 interface CacheEntry {
-  lastLogged: number; // Unix timestamp (ms)
+  lastLogged: number; 
   sessionId: string;
   fingerprintId: string;
 }
 
-/**
- * In-memory cache of recently-logged fingerprints.
- * Key: `${fingerprintId}_${sessionId}`
- */
+
+
+
+
 const recentFingerprints = new Map<string, CacheEntry>();
 
-/**
- * Configuration.
- */
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+
+
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; 
+const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; 
 const MAX_CACHE_SIZE = 10000;
 
-/**
- * Cleanup timer.
- */
+
+
+
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-/**
- * Cleanup expired entries.
- */
+
+
+
 function cleanupExpiredEntries(): void {
   const now = Date.now();
   const expirationThreshold = now - CACHE_TTL_MS;
@@ -65,9 +65,9 @@ function cleanupExpiredEntries(): void {
   }
 }
 
-/**
- * Start periodic cleanup timer.
- */
+
+
+
 function startCleanupTimer(): void {
   if (cleanupTimer) return;
 
@@ -75,7 +75,7 @@ function startCleanupTimer(): void {
     cleanupExpiredEntries();
   }, CLEANUP_INTERVAL_MS);
 
-  // Prevent timer from blocking process exit
+  
   if (typeof cleanupTimer === 'object' && 'unref' in cleanupTimer) {
     (cleanupTimer as NodeJS.Timeout).unref();
   }
@@ -87,13 +87,13 @@ function startCleanupTimer(): void {
   });
 }
 
-/**
- * Check if fingerprint was recently logged.
- *
- * @param fingerprintId - FingerprintJS visitor ID
- * @param sessionId - Session ID (or 'anonymous' if no session)
- * @returns true if logged within TTL window, false otherwise
- */
+
+
+
+
+
+
+
 export function wasRecentlyLogged(fingerprintId: string, sessionId: string = 'anonymous'): boolean {
   if (!cleanupTimer) {
     startCleanupTimer();
@@ -122,17 +122,17 @@ export function wasRecentlyLogged(fingerprintId: string, sessionId: string = 'an
   return false;
 }
 
-/**
- * Mark fingerprint as logged (update cache).
- *
- * @param fingerprintId - FingerprintJS visitor ID
- * @param sessionId - Session ID (or 'anonymous' if no session)
- */
+
+
+
+
+
+
 export function markAsLogged(fingerprintId: string, sessionId: string = 'anonymous'): void {
   const key = `${fingerprintId}_${sessionId}`;
   const now = Date.now();
 
-  // Safety check: Prevent unbounded cache growth
+  
   if (recentFingerprints.size >= MAX_CACHE_SIZE) {
     logger.warn('Fingerprint cache size limit reached, forcing cleanup', {
       component: 'fingerprint-cache',
@@ -170,9 +170,9 @@ export function markAsLogged(fingerprintId: string, sessionId: string = 'anonymo
   });
 }
 
-/**
- * Get cache statistics (for monitoring).
- */
+
+
+
 export function getCacheStats() {
   return {
     size: recentFingerprints.size,
@@ -182,11 +182,11 @@ export function getCacheStats() {
   };
 }
 
-/**
- * Invalidate fingerprint from cache (force re-enrichment on next request).
- *
- * @param fingerprintId - FingerprintJS visitor ID to invalidate
- */
+
+
+
+
+
 export function invalidateFingerprint(fingerprintId: string): void {
   let invalidatedCount = 0;
 
@@ -206,9 +206,9 @@ export function invalidateFingerprint(fingerprintId: string): void {
   }
 }
 
-/**
- * Clear cache (for testing).
- */
+
+
+
 export function clearCache(): void {
   recentFingerprints.clear();
   if (cleanupTimer) {
