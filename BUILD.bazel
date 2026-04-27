@@ -3,7 +3,6 @@ BUILD.bazel for @tummycrypt/tinyland-fingerprint.
 
 Dual-mode build: works with both pnpm (standalone) and Bazel (CI/production).
   Standalone: cd packages/tinyland-fingerprint && pnpm build
-  Monorepo:   bazel build //packages/tinyland-fingerprint/...
 """
 
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
@@ -36,7 +35,6 @@ ts_project(
         ":node_modules/ua-parser-js",
         ":node_modules/@types/node",
         ":node_modules/@types/ua-parser-js",
-        "//packages/tinyland-security:tinyland_security",
     ],
     visibility = ["//visibility:public"],
 )
