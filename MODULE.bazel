@@ -12,8 +12,8 @@ bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "rules_nodejs", version = "6.7.3")
 
 # Inter-module dependencies
-bazel_dep(name = "tummycrypt_tinyland_security", version = "0.2.2")
-bazel_dep(name = "tummycrypt_tinyland_otel", version = "0.2.2")
+bazel_dep(name = "tummycrypt_tinyland_security", version = "0.2.3")
+bazel_dep(name = "tummycrypt_tinyland_otel", version = "0.2.3")
 
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
 node.toolchain(node_version = "22.13.1")
