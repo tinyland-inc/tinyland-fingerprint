@@ -127,9 +127,12 @@ describe('FingerprintSearchService', () => {
   });
 
   describe('search', () => {
-    it('should throw when tempo service not configured', async () => {
+    it('should return empty results when tempo service not configured', async () => {
       const service = new FingerprintSearchService();
-      await expect(service.search({})).rejects.toThrow('Tempo query service not configured');
+      const results = await service.search({});
+      expect(results.results).toEqual([]);
+      expect(results.totalResults).toBe(0);
+      expect(results.dataSource).toBe('none');
     });
 
     it('should return results from Tempo', async () => {

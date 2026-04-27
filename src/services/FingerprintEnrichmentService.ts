@@ -80,6 +80,15 @@ export interface FingerprintRequestContext {
   getClientAddress?: () => string;
 }
 
+export type FingerprintAdditionalAttributes = Record<
+  string,
+  string | boolean | number
+>;
+
+export interface FingerprintEnrichmentOptions {
+  additionalAttributes?: FingerprintAdditionalAttributes;
+}
+
 
 
 
@@ -168,7 +177,8 @@ export async function enrichFingerprint(
   fingerprintId: string,
   detailedFingerprint?: any,
   eventType: EnrichedFingerprint['eventType'] = 'session_validated',
-  consentPreferences?: ConsentPreferenceData
+  consentPreferences?: ConsentPreferenceData,
+  options: FingerprintEnrichmentOptions = {}
 ): Promise<EnrichedFingerprint> {
   const config = getFingerprintConfig();
 
@@ -464,6 +474,12 @@ export async function enrichFingerprint(
       if (contentPage?.forceTheme) span.setAttribute('preferences.contentPage.forceTheme', contentPage.forceTheme);
       if (contentPage?.forceDarkMode !== undefined) span.setAttribute('preferences.contentPage.forceDarkMode', contentPage.forceDarkMode);
       if (contentPage?.forceA11y !== undefined) span.setAttribute('preferences.contentPage.forceA11y', contentPage.forceA11y);
+    }
+
+    if (options.additionalAttributes) {
+      for (const [key, value] of Object.entries(options.additionalAttributes)) {
+        span.setAttribute(key, value);
+      }
     }
 
     
