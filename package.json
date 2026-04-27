@@ -36,7 +36,7 @@
     "prepublishOnly": "pnpm build && pnpm check:package"
   },
   "dependencies": {
-    "@tummycrypt/tinyland-security": "workspace:^",
+    "@tummycrypt/tinyland-security": "^0.2.2",
     "ua-parser-js": "^2.0.0"
   },
   "devDependencies": {
