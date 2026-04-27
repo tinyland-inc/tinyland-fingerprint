@@ -42,12 +42,12 @@
   "devDependencies": {
     "@fast-check/vitest": "^0.2.4",
     "@types/node": "^22.0.0",
-    "@types/ua-parser-js": "^0.7.39",
+    "@types/ua-parser-js": "^0.7.0",
     "fast-check": "^4.3.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.0",
     "publint": "^0.3.18",
-    "@tummycrypt/tinyland-security @tummycrypt/tinyland-otel": "^0.2.2"
+    "@tummycrypt/tinyland-otel": "^0.2.2"
   },
   "peerDependencies": {
     "@tummycrypt/tinyland-otel": "^0.2.2"
