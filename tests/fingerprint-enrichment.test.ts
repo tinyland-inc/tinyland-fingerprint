@@ -185,6 +185,40 @@ describe('FingerprintEnrichmentService', () => {
       expect(result.cookies.sessionCookiePresent).toBe(true);
       expect(result.cookies.fingerprintCookiePresent).toBe(true);
     });
+
+    it('should apply additional attributes to the active span', async () => {
+      const setAttribute = vi.fn();
+
+      configureFingerprint({
+        createSpan: async (_name, fn) => fn({
+          setAttribute,
+          recordException: vi.fn(),
+          setStatus: vi.fn(),
+          end: vi.fn(),
+        }),
+      });
+
+      const ctx = createMockContext();
+      await enrichFingerprint(
+        ctx,
+        'fp-extra-attrs',
+        undefined,
+        'session_validated',
+        undefined,
+        {
+          additionalAttributes: {
+            'settings.preferences.theme': 'pride',
+            'settings.preferences.theme.timestamp': '2026-01-15T10:00:00Z',
+          },
+        },
+      );
+
+      expect(setAttribute).toHaveBeenCalledWith('settings.preferences.theme', 'pride');
+      expect(setAttribute).toHaveBeenCalledWith(
+        'settings.preferences.theme.timestamp',
+        '2026-01-15T10:00:00Z',
+      );
+    });
   });
 
   describe('enrichFingerprintOnSessionCreate', () => {

@@ -105,7 +105,7 @@ export interface SearchResults {
   page: number;
   pageSize: number;
   totalPages: number;
-  dataSource: 'tempo' | 'loki';
+  dataSource: 'tempo' | 'loki' | 'none';
 }
 
 
@@ -170,7 +170,15 @@ export class FingerprintSearchService {
       logger.info('Starting fingerprint search', { filters });
 
       if (!this.tempoService) {
-        throw new Error('Tempo query service not configured');
+        logger.warn('Tempo query service not configured — returning empty results');
+        return {
+          results: [],
+          totalResults: 0,
+          page: 1,
+          pageSize: filters.pageSize ?? 20,
+          totalPages: 0,
+          dataSource: 'none' as const,
+        };
       }
 
       const tempoResults = await this.searchTempo(filters);
