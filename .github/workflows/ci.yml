@@ -28,6 +28,6 @@ jobs:
       bazel_targets: "//:pkg //:test"
       package_dir: ./bazel-bin/pkg
       npm_access: public
-      github_package_name: "@tummycrypt/tinyland-fingerprint"
+      github_package_name: "@tinyland-inc/tinyland-fingerprint"
       dry_run: true
     secrets: inherit
