@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@tummycrypt/tinyland-security':
-        specifier: ^0.2.2
-        version: 0.2.2
       ua-parser-js:
         specifier: ^2.0.0
         version: 2.0.9
@@ -185,18 +182,6 @@ packages:
       '@opentelemetry/sdk-node':
         optional: true
       '@pyroscope/nodejs':
-        optional: true
-
-  '@tummycrypt/tinyland-security@0.2.2':
-    resolution: {integrity: sha512-QGygJ2z9UpQGYURTpNhETAiPlNDvxNvPfgudYEP/28PVBJS7/mSvTZe7C1TIWVH+PA5Ymxr2SQMKMVRZHjbAuA==}
-    engines: {node: '>=22.0.0'}
-    peerDependencies:
-      '@maxmind/geoip2-node': '>=5.0.0'
-      '@tummycrypt/tinyland-auth': ^0.2.2
-    peerDependenciesMeta:
-      '@maxmind/geoip2-node':
-        optional: true
-      '@tummycrypt/tinyland-auth':
         optional: true
 
   '@tybys/wasm-util@0.10.1':
@@ -643,8 +628,6 @@ snapshots:
   '@tummycrypt/tinyland-otel@0.2.2(@opentelemetry/api@1.9.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
-
-  '@tummycrypt/tinyland-security@0.2.2': {}
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
