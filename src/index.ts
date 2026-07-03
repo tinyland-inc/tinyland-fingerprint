@@ -70,6 +70,11 @@ export {
 
 export {
   FingerprintDataService,
+  FINGERPRINT_DATA_PLANE_CONTRACT,
+  resolveFingerprintDataPlaneAvailability,
+  type FingerprintDataPlaneAvailability,
+  type FingerprintDataPlaneHealth,
+  type FingerprintDataPlaneSource,
   type FingerprintRecord,
 } from './services/FingerprintDataService.js';
 
@@ -93,6 +98,9 @@ export {
   calculateDistance,
   isImpossibleTravel,
   type FingerprintHistory,
+  type FingerprintInvestigationWindow,
+  type FingerprintSecuritySignal,
+  type FingerprintSecurityInvestigation,
   type LocationChange,
   type FingerprintChange,
   type UserActivitySummary,
@@ -120,6 +128,7 @@ export {
   writeFingerprintOverlayFallback,
   readFingerprintOverlayFallback,
   createFingerprintOverlaySyncRuntime,
+  createFingerprintOverlayRuntime,
   buildFingerprintOverlaySyncAttributes,
   fetchFingerprintSettingsHistoryFromApi,
   resolveFingerprintOverlayClientState,
@@ -145,6 +154,10 @@ export {
   type FingerprintOverlayJsonFetch,
   type FingerprintOverlaySyncRuntimeOptions,
   type FingerprintOverlaySyncRuntime,
+  type FingerprintOverlayRuntimeState,
+  type FingerprintOverlayRuntimeOptions,
+  type FingerprintOverlayRuntimePatch,
+  type FingerprintOverlayRuntime,
   type FingerprintSettingsHistoryKey,
   type FingerprintSettingsHistoryOptions,
   type FingerprintSettingsHistoryEntry,
@@ -166,9 +179,15 @@ export {
   formatTimeSinceLastVisit,
   hasPreviousConsent,
   getVisitHistory,
+  getSettingsHistory,
+  isSupportedSettingsHistoryKey,
   getDefaultSettings,
+  SUPPORTED_SETTINGS_HISTORY_KEYS,
   type FingerprintSettings,
   type VisitSummary,
+  type SupportedSettingsHistoryKey,
+  type SettingsHistoryEntry,
+  type SettingsHistoryOptions,
 } from './services/FingerprintSettingsService.js';
 
 

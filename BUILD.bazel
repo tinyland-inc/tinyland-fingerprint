@@ -5,18 +5,17 @@ Dual-mode build: works with both pnpm (standalone) and Bazel (CI/production).
   Standalone: cd packages/tinyland-fingerprint && pnpm build
 """
 
-load("@aspect_rules_js//npm:defs.bzl", "npm_link_package", "npm_package")
+load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@tummycrypt_tinyland_fingerprint_npm//:defs.bzl", "npm_link_all_packages")
 load("@tummycrypt_tinyland_fingerprint_npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
 npm_link_all_packages(name = "node_modules")
 
-npm_link_package(
-    name = "node_modules/@tummycrypt/tinyland-security",
-    src = "@tummycrypt_tinyland_security//:pkg",
-)
-
+# CARE ITEM (TIN-1744, 5/5): node_modules/@tummycrypt/tinyland-security link
+# and its ts_project/vitest_test deps entries dropped here. See MODULE.bazel
+# for the full rationale — the only import that needed this wiring is now
+# inlined locally in FingerprintClientIdentityService.ts.
 
 ts_project(
     name = "tinyland_fingerprint",
@@ -37,7 +36,6 @@ ts_project(
     validate = False,
     deps = [
         ":node_modules",
-        ":node_modules/@tummycrypt/tinyland-security",
         ":node_modules/ua-parser-js",
         ":node_modules/@types/node",
         ":node_modules/@types/ua-parser-js",
@@ -52,7 +50,7 @@ npm_package(
         ":tinyland_fingerprint",
     ],
     package = "@tummycrypt/tinyland-fingerprint",
-    version = "0.2.3",
+    version = "0.3.0",
     visibility = ["//visibility:public"],
 )
 
@@ -60,7 +58,6 @@ vitest_bin.vitest_test(
     name = "test",
     data = [
         ":node_modules",
-        ":node_modules/@tummycrypt/tinyland-security",
         "tsconfig.json",
         ":node_modules/vitest",
         "vitest.config.ts",
