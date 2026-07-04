@@ -10,6 +10,14 @@ import {
 import { getFingerprintConfig } from '../config.js';
 
 export const DEFAULT_TEMPO_RETRY_AFTER_MS = 3000;
+// CARE ITEM (TIN-1744, 1/5): ported as-is from vendored 0.3.0. This default was
+// 10 in 0.2.3 (standalone) and is 1 here — a deliberate 10x reduction in the
+// default retry budget for any caller of recoverFingerprintSettingsFromTempo /
+// FingerprintOverlayRuntimeService that does not explicitly pass `maxRetries`.
+// Ported verbatim to match the app's proven 0.3.0 surface, but this is a real
+// semantic/behavior change, not a pure addition — flagged for operator review
+// in the PR body, not silently absorbed.
+export const DEFAULT_TEMPO_RECOVERY_MAX_RETRIES = 1;
 export const DEFAULT_OVERLAY_BATCH_INTERVAL_MS = 5000;
 export const DEFAULT_OVERLAY_FALLBACK_KEY_PREFIX = 'tempo:';
 export const DEFAULT_OVERLAY_HISTORY_ENDPOINT = '/api/settings/history';
@@ -158,6 +166,69 @@ export interface FingerprintOverlaySyncRuntime<K extends string = string> {
   dispose: () => void;
   readFallback: <T = unknown>(key: K) => T | undefined;
   getPendingChanges: () => FingerprintOverlayChange<K>[];
+}
+
+export type FingerprintOverlayRuntimeSettings<
+  K extends string = string,
+  S extends object = Record<string, unknown>,
+> = Partial<S> & Partial<Record<K, unknown>>;
+
+export interface FingerprintOverlayRuntimeState<
+  K extends string = string,
+  S extends object = Record<string, unknown>,
+> {
+  settings: FingerprintOverlayRuntimeSettings<K, S>;
+  isHydrated: boolean;
+  isSyncing: boolean;
+  lastSyncTime: string | null;
+  pendingChanges: FingerprintOverlayChange<K>[];
+  tempoAvailable: boolean;
+}
+
+export interface FingerprintOverlayRuntimeOptions<
+  K extends string = string,
+  S extends object = Record<string, unknown>,
+> extends Omit<
+    FingerprintOverlaySyncRuntimeOptions<K>,
+    | 'onPendingChangesChange'
+    | 'onSyncingChange'
+    | 'onTempoAvailabilityChange'
+    | 'onLastSyncTimeChange'
+  > {
+  historyEndpoint?: string;
+  historyFetchImpl?: FingerprintOverlayJsonFetch<FingerprintSettingsHistoryEntry[]>;
+  initialState?: Partial<FingerprintOverlayRuntimeState<K, S>>;
+  onStateChange?: (state: FingerprintOverlayRuntimeState<K, S>) => void;
+}
+
+export type FingerprintOverlayRuntimePatch<
+  K extends string = string,
+> = Array<{
+  key: K;
+  value: unknown;
+  timestamp?: string;
+  source?: FingerprintOverlayChangeSource;
+}>;
+
+export interface FingerprintOverlayRuntime<
+  K extends string = string,
+  S extends object = Record<string, unknown>,
+> {
+  hydrateClientState: (snapshot: FingerprintOverlaySettingsSnapshot) => void;
+  recoverClientState: (
+    options: TempoRecoveryOptions,
+  ) => Promise<TempoRecoveryResult>;
+  applySettingsPatch: (
+    changes: FingerprintOverlayRuntimePatch<K>,
+  ) => void;
+  syncOverlay: () => Promise<boolean>;
+  getSettingsHistory: (
+    key: FingerprintSettingsHistoryKey,
+    options?: FingerprintSettingsHistoryOptions,
+  ) => Promise<FingerprintSettingsHistoryEntry[]>;
+  get: <V = unknown>(key: K) => V | undefined;
+  getState: () => FingerprintOverlayRuntimeState<K, S>;
+  dispose: () => void;
 }
 
 export interface TempoRecoveryOptions {
@@ -466,6 +537,137 @@ export function createFingerprintOverlaySyncRuntime<
   };
 }
 
+export function createFingerprintOverlayRuntime<
+  K extends string = string,
+  S extends object = Record<string, unknown>,
+>(
+  options: FingerprintOverlayRuntimeOptions<K, S>,
+): FingerprintOverlayRuntime<K, S> {
+  const {
+    fingerprintId,
+    syncEndpoint,
+    fetchImpl,
+    storage,
+    batchIntervalMs,
+    fallbackKeyPrefix,
+    now = () => new Date().toISOString(),
+    historyEndpoint = DEFAULT_OVERLAY_HISTORY_ENDPOINT,
+    historyFetchImpl,
+    initialState,
+    onStateChange,
+  } = options;
+
+  let state: FingerprintOverlayRuntimeState<K, S> = {
+    settings: initialState?.settings ?? {},
+    isHydrated: initialState?.isHydrated ?? false,
+    isSyncing: initialState?.isSyncing ?? false,
+    lastSyncTime: initialState?.lastSyncTime ?? null,
+    pendingChanges: initialState?.pendingChanges ?? [],
+    tempoAvailable: initialState?.tempoAvailable ?? true,
+  };
+
+  const emitState = () => {
+    onStateChange?.({
+      ...state,
+      settings: { ...state.settings },
+      pendingChanges: [...state.pendingChanges],
+    });
+  };
+
+  const updateState = (
+    patch: Partial<FingerprintOverlayRuntimeState<K, S>>,
+  ) => {
+    state = {
+      ...state,
+      ...patch,
+      settings: patch.settings ?? state.settings,
+      pendingChanges: patch.pendingChanges ?? state.pendingChanges,
+    };
+    emitState();
+  };
+
+  const syncRuntime = createFingerprintOverlaySyncRuntime<K>({
+    fingerprintId,
+    syncEndpoint,
+    fetchImpl,
+    storage,
+    batchIntervalMs,
+    fallbackKeyPrefix,
+    now,
+    onPendingChangesChange: (changes) => {
+      updateState({ pendingChanges: changes });
+    },
+    onSyncingChange: (isSyncing) => {
+      updateState({ isSyncing });
+    },
+    onTempoAvailabilityChange: (tempoAvailable) => {
+      updateState({ tempoAvailable });
+    },
+    onLastSyncTimeChange: (lastSyncTime) => {
+      updateState({ lastSyncTime });
+    },
+  });
+
+  const applySettingsPatch = (
+    changes: FingerprintOverlayRuntimePatch<K>,
+  ) => {
+    let nextSettings = { ...state.settings };
+
+    for (const change of changes) {
+      nextSettings = {
+        ...nextSettings,
+        [change.key]: change.value,
+      };
+
+      syncRuntime.recordChange(
+        change.key,
+        change.value,
+        change.source ?? 'user',
+      );
+    }
+
+    updateState({ settings: nextSettings });
+  };
+
+  return {
+    hydrateClientState: (snapshot) => {
+      updateState({
+        settings: {
+          ...(snapshot.settings as unknown as Partial<S>),
+        } as FingerprintOverlayRuntimeSettings<K, S>,
+        isHydrated: true,
+        lastSyncTime: snapshot.lastSyncTime || now(),
+      });
+    },
+    recoverClientState: recoverFingerprintSettingsFromTempo,
+    applySettingsPatch,
+    syncOverlay: syncRuntime.flush,
+    getSettingsHistory: (key, historyOptions = {}) => {
+      const currentFingerprintId = fingerprintId();
+      if (!currentFingerprintId) {
+        return Promise.resolve([]);
+      }
+
+      return fetchFingerprintSettingsHistoryFromApi(
+        currentFingerprintId,
+        key,
+        {
+          ...historyOptions,
+          endpoint: historyEndpoint,
+          fetchImpl: historyFetchImpl,
+        },
+      );
+    },
+    get: <V = unknown>(key: K) => state.settings[key] as V | undefined,
+    getState: () => ({
+      ...state,
+      settings: { ...state.settings },
+      pendingChanges: [...state.pendingChanges],
+    }),
+    dispose: syncRuntime.dispose,
+  };
+}
+
 export function buildFingerprintOverlaySyncAttributes<
   K extends string = string,
 >(
@@ -541,7 +743,7 @@ export async function resolveFingerprintOverlayClientState(
     serverNeedsConsent = false,
     tempoAvailable,
     tempoRetryAfter,
-    maxRetries = 10,
+    maxRetries = DEFAULT_TEMPO_RECOVERY_MAX_RETRIES,
     checkTempoHealth,
     fetchSettings,
     onAttempt,
@@ -775,7 +977,7 @@ export async function recoverFingerprintSettingsFromTempo(
     initialSettings = null,
     tempoAvailable,
     tempoRetryAfter = DEFAULT_TEMPO_RETRY_AFTER_MS,
-    maxRetries = 10,
+    maxRetries = DEFAULT_TEMPO_RECOVERY_MAX_RETRIES,
     checkTempoHealth,
     fetchSettings,
     onAttempt,
@@ -799,7 +1001,16 @@ export async function recoverFingerprintSettingsFromTempo(
     attempts += 1;
     onAttempt?.(attempts, maxRetries);
 
-    await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    // CARE ITEM (TIN-1744, 1/5): ported as-is from vendored 0.3.0. 0.2.3
+    // (standalone) always awaited `retryDelay` before *every* health check,
+    // including the first. Here the first attempt fires immediately (no
+    // upfront wait) and only subsequent attempts wait. Combined with the
+    // maxRetries default dropping 10 -> 1 above, worst-case recovery latency
+    // at defaults drops from up to `10 * retryDelay` to effectively 0. Flagged
+    // for operator review alongside the maxRetries change.
+    if (attempts > 1 && retryDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    }
 
     try {
       const healthy = await checkTempoHealth();

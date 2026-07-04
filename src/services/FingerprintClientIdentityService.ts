@@ -1,5 +1,3 @@
-import { isTempFingerprint } from '@tummycrypt/tinyland-security';
-
 export interface EnsureClientFingerprintReadyOptions {
   readCurrentFingerprint: () => string | null;
   generateFingerprint: () => Promise<string>;
@@ -19,6 +17,18 @@ export interface EnsureClientFingerprintReadyResult {
 
 async function defaultWaitForPropagation(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 100));
+}
+
+// CARE ITEM (TIN-1744, 4/5): this is a fix, not a regression. 0.2.3
+// (standalone) imported `isTempFingerprint` from
+// `@tummycrypt/tinyland-security` — a package whose barrel pulls in
+// server-only code and broke browser bundles that consume this
+// (browser-facing) service. Vendored 0.3.0 commit f14515f3b ("fix: keep
+// browser bundles off server-only barrels") de-imported it in favor of this
+// one-line local inline, which is byte-identical in behavior. Ported here
+// deliberately to fix the standalone's import, not to reintroduce it.
+function isTempFingerprint(fingerprintId: string | null | undefined): boolean {
+  return !!fingerprintId && fingerprintId.startsWith('temp_');
 }
 
 export async function ensureClientFingerprintReady(
