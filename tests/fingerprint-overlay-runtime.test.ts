@@ -2,10 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyFingerprintOverlayHydrationState,
   buildFingerprintOverlaySyncAttributes,
+  createFingerprintOverlayRuntime,
   createFingerprintOverlaySyncRuntime,
   DEFAULT_TEMPO_RETRY_AFTER_MS,
+  DEFAULT_TEMPO_RECOVERY_MAX_RETRIES,
   DEFAULT_OVERLAY_BATCH_INTERVAL_MS,
   DEFAULT_OVERLAY_HISTORY_ENDPOINT,
+  DEFAULT_OVERLAY_SYNC_ENDPOINT,
   deriveFingerprintOverlayHydrationState,
   fetchFingerprintSettingsHistoryFromApi,
   getFingerprintSettingsHistory,
@@ -234,6 +237,32 @@ describe('FingerprintOverlayRuntimeService', () => {
       });
     });
 
+    it('uses one immediate health probe by default', async () => {
+      const restored = getDefaultSettings();
+      restored.consentTimestamp = '2026-01-15T10:00:00Z';
+      const checkTempoHealth = vi.fn().mockResolvedValue(true);
+      const fetchSettings = vi.fn().mockResolvedValue(restored);
+
+      const result = await recoverFingerprintSettingsFromTempo({
+        initialSettings: null,
+        tempoAvailable: false,
+        tempoRetryAfter: DEFAULT_TEMPO_RETRY_AFTER_MS,
+        checkTempoHealth,
+        fetchSettings,
+      });
+
+      expect(DEFAULT_TEMPO_RECOVERY_MAX_RETRIES).toBe(1);
+      expect(checkTempoHealth).toHaveBeenCalledTimes(1);
+      expect(fetchSettings).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        fingerprintSettings: restored,
+        hasTempoSettings: true,
+        recovered: true,
+        attempts: 1,
+        timedOut: false,
+      });
+    });
+
     it('times out after max retries when tempo never recovers', async () => {
       const result = await recoverFingerprintSettingsFromTempo({
         initialSettings: null,
@@ -380,6 +409,152 @@ describe('FingerprintOverlayRuntimeService', () => {
 
       await expect(runtime.flush()).resolves.toBe(false);
       expect(runtime.getPendingChanges()).toHaveLength(1);
+    });
+  });
+
+  describe('createFingerprintOverlayRuntime', () => {
+    it('accepts app-defined dotted-key setting namespaces without a broad string index', () => {
+      interface DottedSettingsNamespace {
+        'preferences.theme': string;
+        'preferences.darkMode': 'light' | 'dark' | 'system';
+        [key: `${string}.${string}`]: unknown;
+      }
+
+      const runtime = createFingerprintOverlayRuntime<
+        keyof DottedSettingsNamespace,
+        DottedSettingsNamespace
+      >({
+        fingerprintId: () => 'fp-dotted-namespace',
+        initialState: {
+          settings: {
+            'preferences.theme': 'pride',
+          },
+        },
+      });
+
+      expect(runtime.get('preferences.theme')).toBe('pride');
+    });
+
+    it('hydrates, patches, flushes, and exposes state from the package runtime', async () => {
+      const fetchImpl = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+      const stateSnapshots: Array<{
+        isHydrated: boolean;
+        pending: number;
+        theme: unknown;
+        lastSyncTime: string | null;
+      }> = [];
+
+      const runtime = createFingerprintOverlayRuntime({
+        fingerprintId: () => 'fp-runtime',
+        fetchImpl,
+        batchIntervalMs: DEFAULT_OVERLAY_BATCH_INTERVAL_MS,
+        now: () => '2026-01-15T10:00:00Z',
+        onStateChange: (state) => {
+          stateSnapshots.push({
+            isHydrated: state.isHydrated,
+            pending: state.pendingChanges.length,
+            theme: state.settings['preferences.theme'],
+            lastSyncTime: state.lastSyncTime,
+          });
+        },
+      });
+
+      runtime.hydrateClientState({
+        settings: {
+          'preferences.theme': 'trans',
+          'preferences.darkMode': 'system',
+          'a11y.reducedMotion': false,
+          'a11y.highContrast': false,
+          'a11y.fontSize': 'normal',
+        },
+        lastSyncTime: '2026-01-15T09:55:00Z',
+      });
+
+      expect(runtime.get('preferences.theme')).toBe('trans');
+      expect(runtime.getState()).toMatchObject({
+        isHydrated: true,
+        lastSyncTime: '2026-01-15T09:55:00Z',
+        pendingChanges: [],
+      });
+
+      runtime.applySettingsPatch([
+        {
+          key: 'preferences.theme',
+          value: 'pride',
+        },
+      ]);
+
+      expect(runtime.get('preferences.theme')).toBe('pride');
+      expect(runtime.getState().pendingChanges).toHaveLength(1);
+
+      await expect(runtime.syncOverlay()).resolves.toBe(true);
+      expect(fetchImpl).toHaveBeenCalledWith(DEFAULT_OVERLAY_SYNC_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fingerprintId: 'fp-runtime',
+          changes: [
+            {
+              key: 'preferences.theme',
+              value: 'pride',
+              timestamp: '2026-01-15T10:00:00Z',
+              source: 'user',
+            },
+          ],
+        }),
+      });
+      expect(runtime.getState().pendingChanges).toEqual([]);
+      expect(runtime.getState().lastSyncTime).toBe('2026-01-15T10:00:00Z');
+      expect(stateSnapshots.at(-1)).toMatchObject({
+        isHydrated: true,
+        pending: 0,
+        theme: 'pride',
+        lastSyncTime: '2026-01-15T10:00:00Z',
+      });
+    });
+
+    it('queries settings history through the runtime boundary', async () => {
+      const historyFetchImpl = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => [
+          {
+            value: 'pride',
+            timestamp: '2026-01-15T10:00:00Z',
+          },
+        ],
+      });
+
+      const runtime = createFingerprintOverlayRuntime({
+        fingerprintId: () => 'fp-history',
+        historyFetchImpl,
+      });
+
+      await expect(
+        runtime.getSettingsHistory('preferences.theme', { limit: 1 }),
+      ).resolves.toEqual([
+        {
+          value: 'pride',
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+      ]);
+      expect(historyFetchImpl).toHaveBeenCalledWith(
+        DEFAULT_OVERLAY_HISTORY_ENDPOINT,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fingerprintId: 'fp-history',
+            key: 'preferences.theme',
+            limit: 1,
+          }),
+        },
+      );
     });
   });
 

@@ -1,14 +1,15 @@
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Fingerprint Search Service
+ *
+ * High-performance fingerprint intelligence search service leveraging
+ * Tempo TraceQL queries for attribute-based search.
+ *
+ * This service is Tempo-only by contract.
+ *
+ * All external dependencies are injected via the config module.
+ *
+ * @module services/FingerprintSearchService
+ */
 
 import {
   getScopedLogger,
@@ -105,7 +106,13 @@ export interface SearchResults {
   page: number;
   pageSize: number;
   totalPages: number;
-  dataSource: 'tempo' | 'loki' | 'none';
+  // CARE ITEM (TIN-1744, 3/5): ported as-is from vendored 0.3.0. Narrowed
+  // from 'tempo' | 'loki' | 'none' -> 'tempo' | 'none' (matches the
+  // "tempo-only" refactor commit). No runtime logic changed in this file —
+  // this is a type-only narrowing, but it is a real compile-time break for
+  // any downstream consumer TypeScript that exhaustively switches/narrows on
+  // the 'loki' variant of this field. Flagged for operator review.
+  dataSource: 'tempo' | 'none';
 }
 
 
