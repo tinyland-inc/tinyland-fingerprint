@@ -8,6 +8,9 @@ import {
   getFingerprintVisitCount,
   hasPreviousConsent,
   getVisitHistory,
+  getSettingsHistory,
+  isSupportedSettingsHistoryKey,
+  SUPPORTED_SETTINGS_HISTORY_KEYS,
 } from '../src/services/FingerprintSettingsService.js';
 import { configureFingerprint, resetFingerprintConfig, DEFAULT_CONSENT } from '../src/config.js';
 
@@ -262,6 +265,90 @@ describe('FingerprintSettingsService', () => {
       expect(history[0].pathname).toBe('/admin');
       expect(history[0].referrer).toBe('google.com');
       expect(history[1].device).toBe('mobile');
+    });
+  });
+
+  describe('settings history support', () => {
+    it('should expose the supported settings-history keys', () => {
+      expect(SUPPORTED_SETTINGS_HISTORY_KEYS).toEqual([
+        'preferences.theme',
+        'preferences.darkMode',
+      ]);
+      expect(isSupportedSettingsHistoryKey('preferences.theme')).toBe(true);
+      expect(isSupportedSettingsHistoryKey('preferences.darkMode')).toBe(true);
+      expect(isSupportedSettingsHistoryKey('a11y.fontSize')).toBe(false);
+    });
+
+    it('should return empty history when tempo is not configured', async () => {
+      const history = await getSettingsHistory('fp-123', 'preferences.theme');
+      expect(history).toEqual([]);
+    });
+
+    it('should return filtered settings history for supported keys', async () => {
+      configureFingerprint({
+        tempoQueryService: {
+          queryFingerprints: vi.fn().mockResolvedValue([
+            {
+              timestamp: '2026-01-15T10:00:00Z',
+              preferencesTheme: 'pride',
+              preferencesDarkMode: 'dark',
+            },
+            {
+              timestamp: '2026-01-14T08:00:00Z',
+              preferencesTheme: 'trans',
+              preferencesDarkMode: 'system',
+            },
+            {
+              timestamp: '2026-01-13T08:00:00Z',
+              preferencesDarkMode: 'light',
+            }
+          ]),
+          searchTraces: vi.fn(),
+          getTagValueSuggestions: vi.fn(),
+        },
+      });
+
+      const themeHistory = await getSettingsHistory(
+        'fp-history',
+        'preferences.theme',
+        { limit: 10 }
+      );
+
+      expect(themeHistory).toEqual([
+        {
+          key: 'preferences.theme',
+          value: 'pride',
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+        {
+          key: 'preferences.theme',
+          value: 'trans',
+          timestamp: '2026-01-14T08:00:00Z',
+        },
+      ]);
+
+      const darkModeHistory = await getSettingsHistory(
+        'fp-history',
+        'preferences.darkMode',
+        {
+          startTime: '2026-01-14T00:00:00Z',
+          endTime: '2026-01-15T23:59:59Z',
+          limit: 10,
+        }
+      );
+
+      expect(darkModeHistory).toEqual([
+        {
+          key: 'preferences.darkMode',
+          value: 'dark',
+          timestamp: '2026-01-15T10:00:00Z',
+        },
+        {
+          key: 'preferences.darkMode',
+          value: 'system',
+          timestamp: '2026-01-14T08:00:00Z',
+        },
+      ]);
     });
   });
 });

@@ -1,13 +1,13 @@
-
-
-
-
-
-
-
-
-
-
+/**
+ * Fingerprint Settings Service
+ *
+ * Uses TempoQL to restore user settings from fingerprint history.
+ * This is a NOVEL ACHIEVEMENT: using Tempo as a fingerprint-indexed settings database.
+ *
+ * All external dependencies are injected via the config module.
+ *
+ * @module services/FingerprintSettingsService
+ */
 
 import {
   getScopedLogger,
@@ -22,15 +22,15 @@ import {
 
 const logger = getScopedLogger('fingerprint-settings-service');
 
-
+// OTel status codes
 const SpanStatusCode = {
   OK: 1,
   ERROR: 2,
 };
 
-
-
-
+/**
+ * Complete fingerprint settings restored from Tempo.
+ */
 export interface FingerprintSettings {
   categories: ConsentCategories;
   preciseLocation: boolean;
@@ -69,9 +69,9 @@ export interface FingerprintSettings {
   consentTimestamp: string | null;
 }
 
-
-
-
+/**
+ * Visit history entry for fingerprint.
+ */
 export interface VisitSummary {
   timestamp: string;
   pathname: string | null;
@@ -83,9 +83,35 @@ export interface VisitSummary {
   device: string | null;
 }
 
+/**
+ * Settings keys with first-class history support.
+ *
+ * This is intentionally narrow. Arbitrary span-attribute history extraction
+ * is a separate data-plane concern and should not be implied by this service.
+ */
+export const SUPPORTED_SETTINGS_HISTORY_KEYS = [
+  'preferences.theme',
+  'preferences.darkMode',
+] as const;
 
+export type SupportedSettingsHistoryKey =
+  (typeof SUPPORTED_SETTINGS_HISTORY_KEYS)[number];
 
+export interface SettingsHistoryEntry {
+  key: SupportedSettingsHistoryKey;
+  value: string;
+  timestamp: string;
+}
 
+export interface SettingsHistoryOptions {
+  startTime?: string;
+  endTime?: string;
+  limit?: number;
+}
+
+/**
+ * Default settings for first-time visitors.
+ */
 export function getDefaultSettings(): FingerprintSettings {
   return {
     categories: { ...DEFAULT_CONSENT },
@@ -126,9 +152,18 @@ export function getDefaultSettings(): FingerprintSettings {
   };
 }
 
+/**
+ * Type guard for supported settings-history keys.
+ */
+export function isSupportedSettingsHistoryKey(
+  key: string
+): key is SupportedSettingsHistoryKey {
+  return (SUPPORTED_SETTINGS_HISTORY_KEYS as readonly string[]).includes(key);
+}
 
-
-
+/**
+ * Restore fingerprint settings from Tempo trace history.
+ */
 export async function restoreFingerprintSettings(
   fingerprintId: string
 ): Promise<RestorableSettings | null> {
@@ -218,9 +253,9 @@ export async function restoreFingerprintSettings(
   });
 }
 
-
-
-
+/**
+ * Get the total number of visits for a fingerprint.
+ */
 export async function getFingerprintVisitCount(fingerprintId: string): Promise<number> {
   return withTracerSpan('fingerprint.visitCount', async (span: FingerprintSpan) => {
     const config = getFingerprintConfig();
@@ -258,9 +293,9 @@ export async function getFingerprintVisitCount(fingerprintId: string): Promise<n
   });
 }
 
-
-
-
+/**
+ * Calculate time since last visit.
+ */
 export function getTimeSinceLastVisit(timestamp: string): { value: number; unit: string } {
   const lastVisit = new Date(timestamp);
   const now = new Date();
@@ -279,17 +314,17 @@ export function getTimeSinceLastVisit(timestamp: string): { value: number; unit:
   return { value: diffMonths, unit: diffMonths === 1 ? 'month' : 'months' };
 }
 
-
-
-
+/**
+ * Format time since last visit as human-readable string.
+ */
 export function formatTimeSinceLastVisit(timestamp: string): string {
   const { value, unit } = getTimeSinceLastVisit(timestamp);
   return `${value} ${unit} ago`;
 }
 
-
-
-
+/**
+ * Check if fingerprint has previous consent.
+ */
 export async function hasPreviousConsent(fingerprintId: string): Promise<boolean> {
   return withTracerSpan('fingerprint.hasConsent', async (span: FingerprintSpan) => {
     const config = getFingerprintConfig();
@@ -327,9 +362,9 @@ export async function hasPreviousConsent(fingerprintId: string): Promise<boolean
   });
 }
 
-
-
-
+/**
+ * Restore ALL settings for a fingerprint from Tempo.
+ */
 export async function restoreFullSettings(
   fingerprintId: string
 ): Promise<FingerprintSettings> {
@@ -361,7 +396,7 @@ export async function restoreFullSettings(
           now
         ) || [];
       } catch {
-        
+        // consent.submission is fallback only
       }
 
       span.setAttribute('consent.traces.count', consentTraces?.length || 0);
@@ -423,7 +458,7 @@ export async function restoreFullSettings(
         }
       }
 
-      
+      // FALLBACK: consent.submission spans (legacy flow)
       if (!consentFound && consentTraces && consentTraces.length > 0) {
         const sortedConsent = [...consentTraces].sort((a: any, b: any) => {
           const aTime = parseInt(a.startTimeUnixNano || '0');
@@ -463,7 +498,7 @@ export async function restoreFullSettings(
         }
       }
 
-      
+      // Extract device/location from most recent enrichment trace
       if (enrichmentTraces && enrichmentTraces.length > 0) {
         const latestEnrichment = enrichmentTraces[0];
         settings.lastVisit = latestEnrichment.timestamp;
@@ -533,9 +568,9 @@ export async function restoreFullSettings(
   });
 }
 
-
-
-
+/**
+ * Get visit history summary for fingerprint.
+ */
 export async function getVisitHistory(
   fingerprintId: string,
   limit: number = 10
@@ -584,9 +619,93 @@ export async function getVisitHistory(
   });
 }
 
+/**
+ * Get temporal history for a supported settings key.
+ */
+export async function getSettingsHistory(
+  fingerprintId: string,
+  key: SupportedSettingsHistoryKey,
+  options: SettingsHistoryOptions = {}
+): Promise<SettingsHistoryEntry[]> {
+  return withTracerSpan('fingerprint.settings.history', async (span: FingerprintSpan) => {
+    const config = getFingerprintConfig();
+    try {
+      const limit = options.limit ?? 10;
+      span.setAttribute('fingerprint.id', fingerprintId);
+      span.setAttribute('settings.key', key);
+      span.setAttribute('settings.limit', limit);
 
+      if (!config.tempoQueryService) return [];
 
+      let timeRange = '168h';
+      if (options.startTime || options.endTime) {
+        const now = Date.now();
+        const startMs = options.startTime
+          ? new Date(options.startTime).getTime()
+          : now - (7 * 24 * 60 * 60 * 1000);
+        const endMs = options.endTime ? new Date(options.endTime).getTime() : now;
+        const durationHours = Math.max(1, Math.ceil((endMs - startMs) / (60 * 60 * 1000)));
+        timeRange = `${durationHours}h`;
+      }
 
+      const traces = await config.tempoQueryService.queryFingerprints(
+        timeRange,
+        { 'fingerprint.id': fingerprintId },
+        limit * 2
+      );
+
+      const history = (traces || [])
+        .map((trace: any) => {
+          const value = extractSupportedSettingValue(trace, key);
+          if (value === undefined) return null;
+          return {
+            key,
+            value,
+            timestamp: trace.timestamp,
+          } satisfies SettingsHistoryEntry;
+        })
+        .filter((entry): entry is SettingsHistoryEntry => entry !== null);
+
+      const startMs = options.startTime ? new Date(options.startTime).getTime() : 0;
+      const endMs = options.endTime ? new Date(options.endTime).getTime() : Date.now();
+
+      const filtered = history
+        .filter((entry) => {
+          const entryTime = new Date(entry.timestamp).getTime();
+          return entryTime >= startMs && entryTime <= endMs;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )
+        .slice(0, limit);
+
+      span.setAttribute('settings.history_entries', filtered.length);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return filtered;
+    } catch (error) {
+      span.recordException(error as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error)
+      });
+
+      logger.error('Failed to get settings history', {
+        error: error instanceof Error ? error.message : String(error),
+        fingerprintId,
+        key
+      });
+
+      return [];
+    } finally {
+      span.end();
+    }
+  });
+}
+
+/**
+ * Helper to extract span attributes from Tempo search response trace.
+ */
 function extractSpanAttributes(trace: any): Record<string, string> | null {
   try {
     const span = trace?.spanSet?.spans?.[0];
@@ -606,5 +725,17 @@ function extractSpanAttributes(trace: any): Record<string, string> | null {
     return attrs;
   } catch {
     return null;
+  }
+}
+
+function extractSupportedSettingValue(
+  trace: any,
+  key: SupportedSettingsHistoryKey
+): string | undefined {
+  switch (key) {
+    case 'preferences.theme':
+      return trace.preferencesTheme;
+    case 'preferences.darkMode':
+      return trace.preferencesDarkMode;
   }
 }
